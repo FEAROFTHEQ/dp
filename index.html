@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Auth Demo</title>
+</head>
+<body>
+  <h1>Реєстрація</h1>
+  <form id="registerForm">
+    <input type="text" name="username" placeholder="Ім’я користувача" required />
+    <input type="password" name="password" placeholder="Пароль" required />
+    <button type="submit">Зареєструватися</button>
+  </form>
+
+  <h1>Вхід</h1>
+  <form id="loginForm">
+    <input type="text" name="username" placeholder="Ім’я користувача" required />
+    <input type="password" name="password" placeholder="Пароль" required />
+    <button type="submit">Увійти</button>
+  </form>
+
+  <button id="getProfileBtn">Отримати профіль</button>
+  <pre id="output"></pre>
+
+  <script>
+    const registerForm = document.getElementById('registerForm');
+    const loginForm = document.getElementById('loginForm');
+    const output = document.getElementById('output');
+    const getProfileBtn = document.getElementById('getProfileBtn');
+    let token = '';
+
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(registerForm));
+      const res = await fetch('http://localhost:5000/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      output.textContent = JSON.stringify(result, null, 2);
+    });
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(loginForm));
+      const res = await fetch('http://localhost:5000/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      output.textContent = JSON.stringify(result, null, 2);
+      token = result.token;
+    });
+
+    getProfileBtn.addEventListener('click', async () => {
+      const res = await fetch('http://localhost:5000/profile', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await res.json();
+      output.textContent = JSON.stringify(result, null, 2);
+    });
+  </script>
+</body>
+</html>
