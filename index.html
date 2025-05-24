@@ -3,22 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+   <link rel="stylesheet" href="style.css" />
   <title>Auth Demo</title>
 </head>
 <body>
-  <h1>Реєстрація</h1>
+  <div>
+     <h1>Реєстрація</h1>
   <form id="registerForm">
     <input type="text" name="username" placeholder="Ім’я користувача" required />
     <input type="password" name="password" placeholder="Пароль" required />
     <button type="submit">Зареєструватися</button>
   </form>
-
-  <h1>Вхід</h1>
+  </div>
+ 
+  <div> 
+ <h1>Вхід</h1>
   <form id="loginForm">
     <input type="text" name="username" placeholder="Ім’я користувача" required />
     <input type="password" name="password" placeholder="Пароль" required />
     <button type="submit">Увійти</button>
   </form>
+  </div>
+ 
 
   <button id="getProfileBtn">Отримати профіль</button>
   <pre id="output"></pre>
