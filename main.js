@@ -1,4 +1,4 @@
-
+require('dotenv').config();
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -9,23 +9,26 @@ const cors = require('cors');
 const forge = require('node-forge');
 
 const app = express();
-const PORT = 5000;
-const SECRET_KEY = 'your_secret_key';
+const PORT = process.env.PORT || 5000;
+const SECRET_KEY = process.env.JWT_SECRET;
 
 app.use(bodyParser.json());
 app.use(cors());
 
+// Підключення до MongoDB через змінну середовища
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('MongoDB підключено'))
+  .catch(err => console.error(err));
 
-mongoose.connect('mongodb+srv://devadevamtod:JERO1WWkb7s430ty@cluster0.v3qefhj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0').then(() => console.log('MongoDB підключено')).catch(err => console.error(err));
-
-
+// Схема користувача
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  publicKey: { type: String, required: true } 
+  publicKey: { type: String, required: true }
 });
 const User = mongoose.model('User', userSchema);
 
+// Генерація пари RSA-ключів
 function generateRSAKeyPair() {
   const keypair = forge.pki.rsa.generateKeyPair(2048);
   return {
@@ -34,21 +37,19 @@ function generateRSAKeyPair() {
   };
 }
 
-
+// Реєстрація
 app.post('/register', [
   body('username').isLength({ min: 3 }).withMessage('Ім’я користувача має містити щонайменше 3 символи'),
   body('password').isLength({ min: 6 }).withMessage('Пароль має містити щонайменше 6 символів')
 ], async (req, res) => {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
   const { username, password } = req.body;
   try {
     const userExists = await User.findOne({ username });
-    if (userExists) {
-      return res.status(400).json({ message: 'Користувач вже існує' });
-    }
+    if (userExists) return res.status(400).json({ message: 'Користувач вже існує' });
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const rsaKeys = generateRSAKeyPair();
     const newUser = new User({ username, password: hashedPassword, publicKey: rsaKeys.publicKey });
@@ -60,18 +61,16 @@ app.post('/register', [
   }
 });
 
-
+// Вхід
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
     const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(400).json({ message: 'Користувача не знайдено' });
-    }
+    if (!user) return res.status(400).json({ message: 'Користувача не знайдено' });
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Невірний пароль' });
-    }
+    if (!isPasswordValid) return res.status(401).json({ message: 'Невірний пароль' });
+
     const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
     res.json({ message: 'Успішний вхід', token });
   } catch (err) {
@@ -79,8 +78,8 @@ app.post('/login', async (req, res) => {
   }
 });
 
-
-app.get('/profile', (req, res) => {
+// Профіль
+app.get('/profile', async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ message: 'Немає токена' });
 
