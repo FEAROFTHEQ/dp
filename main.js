@@ -93,7 +93,9 @@ app.get('/profile', async (req, res) => {
     res.json({ message: `Привіт, ${dbUser.username}`, publicKey: dbUser.publicKey });
   });
 });
-
+app.get('/', (req, res) => {
+  res.send('Сервер працює! 👋');
+});
 app.listen(PORT, () => {
   console.log(`Сервер запущено на http://localhost:${PORT}`);
 });
