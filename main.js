@@ -16,7 +16,7 @@ app.use(bodyParser.json());
 app.use(cors());
 
 
-mongoose.connect('mongodb://localhost:27017/auth_demo').then(() => console.log('MongoDB підключено')).catch(err => console.error(err));
+mongoose.connect('mongodb+srv://devadevamtod:JERO1WWkb7s430ty@cluster0.v3qefhj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0').then(() => console.log('MongoDB підключено')).catch(err => console.error(err));
 
 
 const userSchema = new mongoose.Schema({
