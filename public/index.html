@@ -29,6 +29,7 @@
   <pre id="output"></pre>
 
   <script>
+    const API_BASE = 'https://dp-jha0.onrender.com';
     const registerForm = document.getElementById('registerForm');
     const loginForm = document.getElementById('loginForm');
     const output = document.getElementById('output');
@@ -39,7 +40,7 @@
       e.preventDefault();
       const data = Object.fromEntries(new FormData(registerForm));
       try {
-        const res = await fetch('http://localhost:5000/register', {
+        const res = await fetch(`${API_BASE}/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
@@ -55,7 +56,7 @@
       e.preventDefault();
       const data = Object.fromEntries(new FormData(loginForm));
       try {
-        const res = await fetch('http://localhost:5000/login', {
+        const res = await fetch(`${API_BASE}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
@@ -74,7 +75,7 @@
         return;
       }
       try {
-        const res = await fetch('http://localhost:5000/profile', {
+        const res = await fetch(`${API_BASE}/profile`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await res.json();
