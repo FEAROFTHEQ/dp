@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="style.css" />
-  <title>Auth Demo</title>
+  <title>Create profile</title>
 </head>
 <body>
   <div>
@@ -24,32 +24,62 @@
       <button type="submit">Увійти</button>
     </form>
   </div>
-
+ 
   <button id="getProfileBtn">Отримати профіль</button>
   <pre id="output"></pre>
 
+ <div id="profileCard" style="display:none; border: 1px solid #ccc; padding: 10px; margin-top: 20px; max-width: 250px;">
+    <img src="profile.png" alt="Avatar" style="display:block; margin-bottom:10px; width: 50px"/>
+    <div><strong>Користувач:</strong> <span id="profileUsername"></span></div>
+    <button id="logoutBtn">Вийти з системи</button>
+</div>
   <script>
-     const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const API_BASE = isLocalhost
+    //Перевіряє, чи сайт відкритий локально 
+    const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+     //Якщо сайт відкрито локально — використовує http://localhost:5000.
+    //Інакше — використовує адресу, задеплоєну на Render або інший хостинг.
+    const API_BASE = isLocalhost
     ? 'http://localhost:5000'
     : 'https://dp-jha0.onrender.com';
+    //тримання елементів із DOM
+     const profileCard = document.getElementById('profileCard');
+    const profileUsername = document.getElementById('profileUsername');
+    const logoutBtn = document.getElementById('logoutBtn');
     const registerForm = document.getElementById('registerForm');
     const loginForm = document.getElementById('loginForm');
     const output = document.getElementById('output');
     const getProfileBtn = document.getElementById('getProfileBtn');
-    let token = '';
+      let token =  '';
+       function showProfile(username) {
+      profileUsername.textContent = username;
+      profileCard.style.display = 'block';
+    }
+
+    // Функція сховати профіль
+    function hideProfile() {
+      profileCard.style.display = 'none';
+      profileUsername.textContent = '';
+      token = '';
+      sessionStorage.removeItem('token');
+      output.textContent = 'Ви вийшли з системи';
+    }
 
     registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      //Збирає всі поля з форми (username, password) у об'єкт.
       const data = Object.fromEntries(new FormData(registerForm));
       try {
+        //Надсилає POST-запит на /register (локально або на хостингу).Передає дані у форматі JSON.
         const res = await fetch(`${API_BASE}/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
+        // Отримує відповідь від сервера (наприклад, { message: "Реєстрація успішна", privateKey: "..." }).
+        // Виводить результат у блок output, красиво форматуючи JSON.
         const result = await res.json();
         output.textContent = JSON.stringify(result, null, 2);
+        // Якщо сервер недоступний або сталася інша помилка — виводить повідомлення про помилку
       } catch (err) {
         output.textContent = 'Помилка підключення до сервера';
       }
@@ -57,36 +87,61 @@
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      //Отримує дані з полів форми loginForm (зазвичай username, password) і формує з них об'єкт.
       const data = Object.fromEntries(new FormData(loginForm));
       try {
+        //Надсилає POST-запит до /login, передаючи JSON-дані для входу.
         const res = await fetch(`${API_BASE}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
+        // Читає JSON-відповідь від сервера. Якщо вхід успішний, отримаєш{ message: 'Успішний вхід', token: 'JWT_ТОКЕН' }
         const result = await res.json();
-        output.textContent = JSON.stringify(result, null, 2);
-        token = result.token;
-      } catch (err) {
+        if (res.ok) {
+      // Зберігаємо токен у sessionStorage
+      sessionStorage.setItem('token', result.token);
+      token = result.token;  // Оновлюємо локальну змінну для подальших запитів
+      output.textContent = JSON.stringify(result, null, 2);
+      showProfile(data.username); 
+    } else {
+      output.textContent = result.message || 'Помилка входу';
+    }
+  
+      } 
+      // Якщо сталася помилка з мережею чи сервером — виводиться повідомлення
+      catch (err) {
         output.textContent = 'Помилка підключення до сервера';
       }
     });
 
     getProfileBtn.addEventListener('click', async () => {
-      if (!token) {
-        output.textContent = 'Спочатку увійдіть у систему';
-        return;
+        const savedToken = sessionStorage.getItem('token');
+  if (!savedToken) {
+    output.textContent = 'Спочатку увійдіть у систему';
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/profile`, {
+      headers: {
+        Authorization: `Bearer ${savedToken}`
       }
-      try {
-        const res = await fetch(`${API_BASE}/profile`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const result = await res.json();
-        output.textContent = JSON.stringify(result, null, 2);
-      } catch (err) {
+    });
+    const result = await res.json();
+    if (res.ok) {
+      output.textContent = JSON.stringify(result, null, 2);
+    } else {
+      output.textContent = result.message || 'Помилка отримання профілю';
+    }
+  }  catch (err) {
         output.textContent = 'Помилка підключення до сервера';
       }
     });
+
+     logoutBtn.addEventListener('click', () => {
+      hideProfile();
+  });
   </script>
 </body>
 </html>
