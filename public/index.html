@@ -29,7 +29,10 @@
   <pre id="output"></pre>
 
   <script>
-    const API_BASE = 'https://dp-jha0.onrender.com';
+     const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const API_BASE = isLocalhost
+    ? 'http://localhost:5000'
+    : 'https://dp-jha0.onrender.com';
     const registerForm = document.getElementById('registerForm');
     const loginForm = document.getElementById('loginForm');
     const output = document.getElementById('output');
