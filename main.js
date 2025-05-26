@@ -17,7 +17,6 @@ const SECRET_KEY = process.env.JWT_SECRET;
 app.use(bodyParser.json());
 app.use(cors());
 
-console.log('MONGO_URI:', process.env.MONGO_URI);
 // Підключення до MongoDB через змінну середовища
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB підключено'))
