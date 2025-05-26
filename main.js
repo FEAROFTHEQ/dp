@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+require('dotenv').config(); 
 dotenv.config();
 require('dotenv').config();
 const path = require('path');
