@@ -83,8 +83,9 @@ function generateRSAKeyPair() {
 function authorizeRoles(...allowedRoles) {
   return async (req, res, next) => {
     const authHeader = req.headers.authorization;
-
+console.log(authHeader);
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('Немає токена або невірний формат заголовку');
       return res.status(401).json({ message: 'Немає токена' });
     }
 
@@ -118,8 +119,8 @@ body('role').optional().isIn(['user', 'admin']).withMessage('Невідома р
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { username, password, role = 'user' } = req.body;
-
+  const { username, password } = req.body;
+  const role = 'user';
   try {
     // Перевірка, чи існує користувач із таким username
     const userExists = await User.findOne({ username });
@@ -179,28 +180,7 @@ app.post('/login', async (req, res) => {
 app.get('/admin', authorizeRoles('admin'), (req, res) => {
   res.json({ message: `Ласкаво просимо, адміністраторе ${req.user.username}` });
 });
-// Маршрут для отримання профілю користувача
-app.get('/profile', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ message: 'Немає токена' });
-  }
 
-  const token = authHeader.split(' ')[1];
-
-  jwt.verify(token, SECRET_KEY, async (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: 'Невірний токен' });
-    }
-
-    const dbUser = await User.findOne({ username: user.username });
-    if (!dbUser) {
-      return res.status(404).json({ message: 'Користувача не знайдено' });
-    }
-
-    res.json({ message: `Привіт, ${dbUser.username}`, publicKey: dbUser.publicKey, role: dbUser.role });
-  });
-});
 
 // Маршрут для виходу (логіки не має, просто повідомлення)
 app.post('/logout', (req, res) => {

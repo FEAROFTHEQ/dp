@@ -24,18 +24,17 @@
       <button type="submit">Увійти</button>
     </form>
   </div>
- 
-  <button id="getProfileBtn">Отримати профіль</button>
-  <pre id="output"></pre>
-
+<p id="output"></p>
  <div id="profileCard" style="display:none; border: 1px solid #ccc; padding: 10px; margin-top: 20px; max-width: 250px;">
     <img src="profile.png" alt="Avatar" style="display:block; margin-bottom:10px; width: 50px"/>
     <div><strong>Користувач:</strong> <span id="profileUsername"></span></div>
     <div><strong>Роль:</strong> <span id="profileRole"></span></div> 
     <button id="logoutBtn">Вийти з системи</button>
 </div>
-<a href="/admin" id="adminPanelLink" style="display: none;">Адмін-панель</a>
+<button id="adminPanelLink" style="display: none;">Адмін-панель</button>
+<div id='adminContainer'> </div>
   <script>
+    
     //Перевіряє, чи сайт відкритий локально 
     const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
      //Якщо сайт відкрито локально — використовує http://localhost:5000.
@@ -52,8 +51,8 @@
     const registerForm = document.getElementById('registerForm');
     const loginForm = document.getElementById('loginForm');
     const output = document.getElementById('output');
-    const getProfileBtn = document.getElementById('getProfileBtn');
-      let token =  '';
+    adminPanelLink.style.display = 'none';
+      let token =  sessionStorage.getItem('token') || '';
        function showProfile(username, role) {
       profileUsername.textContent = username;
         profileRole.textContent = role; 
@@ -112,6 +111,9 @@
       token = result.token;  // Оновлюємо локальну змінну для подальших запитів
       output.textContent = JSON.stringify(result, null, 2);
       showProfile(data.username, result.role); 
+
+      console.log(token);
+
       const savedRole = sessionStorage.getItem('role');
       if (savedRole === 'admin') {
     adminPanelLink.style.display = 'block';
@@ -129,31 +131,60 @@
       }
     });
 
-    getProfileBtn.addEventListener('click', async () => {
-        const savedToken = sessionStorage.getItem('token');
+    adminPanelLink.addEventListener('click', async (e)=>{
+        e.preventDefault();
+const savedToken = sessionStorage.getItem('token');
+console.log(savedToken);
+
   if (!savedToken) {
     output.textContent = 'Спочатку увійдіть у систему';
     return;
   }
 
-  try {
-    const res = await fetch(`${API_BASE}/profile`, {
+  // try {
+  //   const res = await fetch(`${API_BASE}/admin`, {
+  //     method: 'GET',
+  //     headers: {
+  //       'Authorization': `Bearer ${savedToken}`
+  //     }
+  //   });
+
+  //   if (res.ok) {
+  //     // Якщо відповідь успішна — відкриваємо /admin у новій вкладці
+  //     window.location.href = `${API_BASE}/admin`;
+  //   } else {
+  //     const result = await res.json();
+  //     output.textContent = result.message || 'Доступ заборонено';
+  //   }
+  // } catch (err) {
+  //   output.textContent = 'Помилка з’єднання з сервером';
+  // }
+ fetch('http://localhost:5000/admin', {
+      method: 'GET',
       headers: {
-        Authorization: `Bearer ${savedToken}`
+        'Authorization': `Bearer ${token}`
       }
-    });
-    const result = await res.json();
-    if (res.ok) {
-      output.textContent = JSON.stringify(result, null, 2);
-    } else {
-      output.textContent = result.message || 'Помилка отримання профілю';
-    }
-  }  catch (err) {
-        output.textContent = 'Помилка підключення до сервера';
-      }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Не авторизовано');
+      return res.text(); // Очікується, що сервер поверне HTML
+    })
+    .then(html => {
+    // замінює весь body
+      // або вставити у конкретний div:
+      document.getElementById('adminContainer').innerHTML = html;
+    })
+    .catch(err => {
+      console.error('Доступ заборонено:', err.message);
+      alert('У вас немає доступу до панелі адміністратора');
     });
 
+    });
+
+
      logoutBtn.addEventListener('click', () => {
+      document.getElementById('adminContainer').innerHTML = html;
+      adminPanelLink.style.display = 'none';
       hideProfile();
   });
 
