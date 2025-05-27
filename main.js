@@ -1,176 +1,221 @@
-
-//Зчитування .env змінних 
-// (дозволяє використовувати змінні середовища з `.env` файлу)
+// Зчитування .env змінних 
+// (дозволяє використовувати змінні середовища з файлу `.env`)
 const dotenv = require('dotenv');
-//(завантажує змінні з .env файлу у process.env)
 dotenv.config();
+
 // Робота з файловими шляхами 
-// (Імпортує вбудований модуль Node.js для роботи з файловими шляхами. Наприклад, щоб коректно скласти абсолютний шлях до файлу
+// (вбудований модуль Node.js для коректної роботи з шляхами)
 const path = require('path');
-//	Веб-сервер
-// (Імпортує `Express` — популярний фреймворк для створення веб-серверів у Node.js. Він спрощує обробку HTTP-запитів і маршрутів.)
+
+// Веб-сервер
+// (Express — популярний фреймворк для створення веб-серверів у Node.js)
 const express = require('express');
-//Хешування паролів 
-// ( Імпортує бібліотеку bcrypt для хешування паролів)
+
+// Хешування паролів 
+// (bcrypt — бібліотека для безпечного хешування паролів)
 const bcrypt = require('bcrypt');
-//Токени для авторизації
-// (Імпортує бібліотеку `jsonwebtoken` для створення і перевірки JWT-токенів)
+
+// Токени для авторизації
+// (jsonwebtoken — для створення і перевірки JWT-токенів)
 const jwt = require('jsonwebtoken');
-// 	Обробка тіла HTTP-запитів
-// ( Імпортує body-parser — проміжне ПЗ, яке розбирає JSON-тіла POST-запитів)
+
+// Обробка тіла HTTP-запитів
+// (body-parser розбирає JSON-тіла POST-запитів)
 const bodyParser = require('body-parser');
-// 	Робота з MongoDB
-// (Імпортує `mongoose` — ORM (обгортка для MongoDB), яка дозволяє працювати з документами MongoDB як з об'єктами JavaScript)
+
+// Робота з MongoDB
+// (mongoose — ORM для роботи з MongoDB через об’єкти JavaScript)
 const mongoose = require('mongoose');
-//	Валідація вхідних даних
-// (Імпортує функції для валідації вхідних даних )
+
+// Валідація вхідних даних
+// (express-validator для перевірки даних із запитів)
 const { body, validationResult } = require('express-validator');
-// 	Доступ до API з інших доменів/портів
-// (Імпортує middleware `cors`, який дозволяє серверу приймати запити з інших доменів або портів 
-// (наприклад, коли фронтенд на `localhost:5173`, а бекенд — на `localhost:5000`).)
+
+// Доступ до API з інших доменів/портів
+// (cors middleware для прийому запитів із інших джерел)
 const cors = require('cors');
+
 // Генерація криптографічних ключів
-// (Імпортує node-forge — криптографічну бібліотеку для генерації ключів RSA, шифрування, хешування та іншої криптографії.)
+// (node-forge — бібліотека для криптографії, RSA ключів і т.п.)
 const forge = require('node-forge');
 
-//Створює екземпляр застосунку Express. `app` — це ваш сервер, 
-// на який ви будете "навішувати" маршрути, middleware, обробники запитів тощо.
+// Ініціалізація Express-застосунку
 const app = express();
-//становлює порт, на якому буде запускатись сервер:
+
+// Порт, на якому запускатиметься сервер
 const PORT = process.env.PORT || 5000;
-// Зчитує секретний ключ з `.env` для підпису JWT-токенів. 
+
+// Секретний ключ для підпису JWT-токенів
 const SECRET_KEY = process.env.JWT_SECRET;
 
-// Додає middleware, який дозволяє Express розуміти `JSON` у запитах (наприклад, при POST реєстрації).
+// Middleware для парсингу JSON-тіл у запитах
 app.use(bodyParser.json());
-//Додає middleware CORS, щоб дозволити фронтенду (на іншому домені чи порту) звертатись до вашого API.
 
+// Middleware CORS для дозволу запитів з інших доменів/портів
 app.use(cors());
 
-// Підключення до MongoDB через змінну середовища
-//Якщо з`єднання з MongoDB пройшло успішно — виводиться повідомлення. Якщо ні — виводиться помилка у консоль.
+// Підключення до MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB підключено'))
-  .catch(err => console.error(err));
+  .catch(err => console.error('Помилка підключення до MongoDB:', err));
 
 // Схема користувача
-// Створює схему для документа MongoDB з полями:username: обов`язкове, унікальне ім`я користувача.
-//password: обов`язковий пароль (зазвичай зберігається в хешованому вигляді).
-//publicKey: відкритий ключ RSA, який зберігається для кожного користувача.
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  publicKey: { type: String, required: true }
+  publicKey: { type: String, required: true },
+  role: { type: String, default: 'user' }
 });
-//Створює модель `User` на основі схеми.Тепер можна виконувати операції типу:
-//const user = await User.findOne({ username: 'admin' });
+
+// Модель користувача на основі схеми
 const User = mongoose.model('User', userSchema);
 
-// Генерація пари RSA-ключів
-// Генерує пару ключів RSA (відкритий і приватний) розміром 2048 біт:
+// Функція генерації пари RSA-ключів (2048 біт)
 function generateRSAKeyPair() {
-  //створює об`єкт з двома ключами.
   const keypair = forge.pki.rsa.generateKeyPair(2048);
   return {
-    // перетворює ключи у формат PEM (звичний для зберігання в базі).
     publicKey: forge.pki.publicKeyToPem(keypair.publicKey),
     privateKey: forge.pki.privateKeyToPem(keypair.privateKey)
   };
 }
 
-// Реєстрація
-//маршрут POST для обробки реєстрації нового користувача.
+
+function authorizeRoles(...allowedRoles) {
+  return async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Немає токена' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+      const decoded = jwt.verify(token, SECRET_KEY);
+      const user = await User.findOne({ username: decoded.username });
+
+      if (!user || !allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: 'Доступ заборонено: недостатньо прав' });
+      }
+
+      req.user = user; // прикріпимо користувача до запиту
+      next();
+    } catch (err) {
+      console.error('Помилка авторизації:', err);
+      res.status(403).json({ message: 'Недійсний токен або помилка перевірки' });
+    }
+  };
+}
+
+// Маршрут для реєстрації користувача
 app.post('/register', [
-  //body(...) — це валидація даних:
-  //Перевіряє, що username має хоча б 3 символи.
-  //І що password має хоча б 6 символів.
   body('username').isLength({ min: 3 }).withMessage('Ім’я користувача має містити щонайменше 3 символи'),
-  body('password').isLength({ min: 6 }).withMessage('Пароль має містити щонайменше 6 символів')],
-   async (req, res) => {
-    // Перевірка, чи є помилки валідації.
-    // Якщо так — відправляє клієнту масив з помилками у форматі JSON.
+  body('password').isLength({ min: 6 }).withMessage('Пароль має містити щонайменше 6 символів'),
+body('role').optional().isIn(['user', 'admin']).withMessage('Невідома роль')
+], async (req, res) => {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-    //Витягує username і password із тіла запиту.
-  const { username, password } = req.body;
-  // Перевіряє, чи є вже користувач із таким іменем у базі.
-  // Якщо є — повертає помилку.
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { username, password, role = 'user' } = req.body;
+
   try {
+    // Перевірка, чи існує користувач із таким username
     const userExists = await User.findOne({ username });
-    if (userExists) return res.status(400).json({ message: 'Користувач вже існує' });
+    if (userExists) {
+      return res.status(400).json({ message: 'Користувач вже існує' });
+    }
+
+    // Хешування пароля
     const hashedPassword = await bcrypt.hash(password, 10);
-    //Генерує пару RSA-ключів: відкритий (піде в базу) і приватний (віддається користувачу).
+
+    // Генерація RSA ключів
     const rsaKeys = generateRSAKeyPair();
-    //Створює нового користувача в базі з:іменем,хешованим паролем,відкритим RSA-ключем.
-    const newUser = new User({ username, password: hashedPassword, publicKey: rsaKeys.publicKey });
+
+    // Створення нового користувача
+    const newUser = new User({
+      username,
+      password: hashedPassword,
+      publicKey: rsaKeys.publicKey,
+      role: 'user'
+    });
+
     await newUser.save();
-//Відповідь клієнту:повідомлення про успішну реєстрацію, приватний ключ, який має бути збережений на боці клієнта 
+
+    // Відповідь із приватним ключем, який потрібно зберегти на клієнті
     res.json({ message: 'Реєстрація успішна', privateKey: rsaKeys.privateKey });
-    //Якщо під час реєстрації трапилась помилка — відправляється помилка 500 (внутрішня помилка сервера).
   } catch (err) {
+    console.error('Помилка під час реєстрації:', err);
     res.status(500).json({ message: 'Помилка сервера' });
   }
 });
 
-// Вхід
-//маршрут POST /login, який приймає ім`я користувача і пароль із тіла запиту.
+// Маршрут для входу користувача
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
+
   try {
-   //Шукає користувача з таким ім`ям у базі. 
     const user = await User.findOne({ username });
-  //Якщо не знайдено — повертає помилку 400 (bad request).
-    if (!user) return res.status(400).json({ message: 'Користувача не знайдено' });
+    if (!user) {
+      return res.status(400).json({ message: 'Користувача не знайдено' });
+    }
 
-    //bcrypt.compare(...) — перевіряє, чи введений пароль відповідає хешу в базі.
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    //Якщо пароль неправильний — повертає помилку 401 (unauthorized).
-    if (!isPasswordValid) return res.status(401).json({ message: 'Неправильний пароль' });
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Неправильний пароль' });
+    }
 
-    //Якщо все добре — генерується JWT-токен із username, який підписується SECRET_KEY. expiresIn: '1h' — токен діє 1 годину.
-    const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
-    //Відповідь: повідомлення та токен.
-    res.json({ message: 'Успішний вхід', token });
+    const payload = { username: user.username, role: user.role };
+    const token = jwt.sign(payload, SECRET_KEY, { expiresIn: '1h' });
+
+    res.json({ message: 'Успішний вхід', token, role: user.role });
   } catch (err) {
+    console.error('Помилка під час входу:', err);
     res.status(500).json({ message: 'Помилка сервера' });
   }
 });
 
-// Профіль
-
+app.get('/admin', authorizeRoles('admin'), (req, res) => {
+  res.json({ message: `Ласкаво просимо, адміністраторе ${req.user.username}` });
+});
+// Маршрут для отримання профілю користувача
 app.get('/profile', async (req, res) => {
-const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ message: 'Немає токена' });
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ message: 'Немає токена' });
+  }
 
-  //Витягує сам токен (друга частина після "Bearer").
   const token = authHeader.split(' ')[1];
-  //Перевіряє справжність токена за допомогою SECRET_KEY.
+
   jwt.verify(token, SECRET_KEY, async (err, user) => {
-    // Якщо токен невалідний або застарів — повертає помилку 403.
-    if (err) return res.status(403).json({ message: 'Невірний токен' });
+    if (err) {
+      return res.status(403).json({ message: 'Невірний токен' });
+    }
 
-    // Знову шукає користувача по username, який був у токені.
     const dbUser = await User.findOne({ username: user.username });
-    if (!dbUser) return res.status(404).json({ message: 'Користувача не знайдено' });
+    if (!dbUser) {
+      return res.status(404).json({ message: 'Користувача не знайдено' });
+    }
 
-    // Якщо знайдено — повертає привітання та відкритий ключ користувача.
-    res.json({ message: `Привіт, ${dbUser.username}`, publicKey: dbUser.publicKey });
+    res.json({ message: `Привіт, ${dbUser.username}`, publicKey: dbUser.publicKey, role: dbUser.role });
   });
 });
 
+// Маршрут для виходу (логіки не має, просто повідомлення)
 app.post('/logout', (req, res) => {
-
   res.json({ message: 'Вихід успішний' });
 });
-//Вказує Express-у, що всі статичні файли (HTML, CSS, JS, зображення) розміщено у папці public.
+
+// Статичні файли з папки 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
-//При GET-запиті на корінь сайту /, сервер повертає файл index.html з папки public.
+// Головна сторінка — віддає index.html
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-//апускає сервер на вказаному порту (з .env або 5000 за замовчуванням) Виводить повідомлення у консоль, що сервер працює.
+// Запуск сервера
 app.listen(PORT, () => {
   console.log(`Сервер запущено на http://localhost:${PORT}`);
 });

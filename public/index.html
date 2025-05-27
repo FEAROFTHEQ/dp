@@ -31,8 +31,10 @@
  <div id="profileCard" style="display:none; border: 1px solid #ccc; padding: 10px; margin-top: 20px; max-width: 250px;">
     <img src="profile.png" alt="Avatar" style="display:block; margin-bottom:10px; width: 50px"/>
     <div><strong>Користувач:</strong> <span id="profileUsername"></span></div>
+    <div><strong>Роль:</strong> <span id="profileRole"></span></div> 
     <button id="logoutBtn">Вийти з системи</button>
 </div>
+<a href="/admin" id="adminPanelLink" style="display: none;">Адмін-панель</a>
   <script>
     //Перевіряє, чи сайт відкритий локально 
     const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
@@ -42,6 +44,8 @@
     ? 'http://localhost:5000'
     : 'https://dp-jha0.onrender.com';
     //тримання елементів із DOM
+    const adminPanelLink = document.getElementById('adminPanelLink'); 
+    const profileRole = document.getElementById('profileRole'); 
      const profileCard = document.getElementById('profileCard');
     const profileUsername = document.getElementById('profileUsername');
     const logoutBtn = document.getElementById('logoutBtn');
@@ -50,8 +54,9 @@
     const output = document.getElementById('output');
     const getProfileBtn = document.getElementById('getProfileBtn');
       let token =  '';
-       function showProfile(username) {
+       function showProfile(username, role) {
       profileUsername.textContent = username;
+        profileRole.textContent = role; 
       profileCard.style.display = 'block';
     }
 
@@ -59,8 +64,10 @@
     function hideProfile() {
       profileCard.style.display = 'none';
       profileUsername.textContent = '';
+      profileRole.textContent = '';
       token = '';
       sessionStorage.removeItem('token');
+      sessionStorage.removeItem('role');
       output.textContent = 'Ви вийшли з системи';
     }
 
@@ -101,9 +108,16 @@
         if (res.ok) {
       // Зберігаємо токен у sessionStorage
       sessionStorage.setItem('token', result.token);
+      sessionStorage.setItem('role', result.role);
       token = result.token;  // Оновлюємо локальну змінну для подальших запитів
       output.textContent = JSON.stringify(result, null, 2);
-      showProfile(data.username); 
+      showProfile(data.username, result.role); 
+      const savedRole = sessionStorage.getItem('role');
+      if (savedRole === 'admin') {
+    adminPanelLink.style.display = 'block';
+  } else{
+    adminPanelLink.style.display = 'none';
+  }
     } else {
       output.textContent = result.message || 'Помилка входу';
     }
@@ -142,6 +156,9 @@
      logoutBtn.addEventListener('click', () => {
       hideProfile();
   });
+
+
+  
   </script>
 </body>
 </html>
