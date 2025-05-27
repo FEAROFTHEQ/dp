@@ -182,10 +182,28 @@ app.get('/admin', authorizeRoles('admin'), (req, res) => {
 });
 
 
+app.get('/users', authorizeRoles('admin', 'user'), async (req, res) => {
+  // try {
+  //   // Отримуємо список користувачів, повертаючи лише username і role
+  //   const users = await User.find({}, 'username role').exec();
+
+  //   // Вивід у консоль сервера
+  //   console.log('Список користувачів:', users);
+
+  //   res.json(users);
+  // } catch (err) {
+  //   console.error('Помилка отримання користувачів:', err);
+  //   res.status(500).json({ message: 'Помилка сервера' });
+  // }
+    console.log('Маршрут /users виконується');
+  res.json({ test: 'ok' });
+});
+
 // Маршрут для виходу (логіки не має, просто повідомлення)
 app.post('/logout', (req, res) => {
   res.json({ message: 'Вихід успішний' });
 });
+
 
 // Статичні файли з папки 'public'
 app.use(express.static(path.join(__dirname, 'public')));

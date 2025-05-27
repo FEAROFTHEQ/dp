@@ -69,7 +69,55 @@
       sessionStorage.removeItem('role');
       output.textContent = 'Ви вийшли з системи';
     }
+function savePrivateKeyToIndexedDB(privateKey) {
+  const request = indexedDB.open('CryptoKeysDB', 1);
 
+  request.onupgradeneeded = function(event) {
+    const db = event.target.result;
+    if (!db.objectStoreNames.contains('keys')) {
+      db.createObjectStore('keys');
+    }
+  };
+
+  request.onsuccess = function(event) {
+    const db = event.target.result;
+    const transaction = db.transaction(['keys'], 'readwrite');
+    const store = transaction.objectStore('keys');
+    store.put(privateKey, 'privateKey');
+    console.log('Приватний ключ збережено в IndexedDB');
+    
+  };
+
+  request.onerror = function(event) {
+    console.error('IndexedDB помилка:', event.target.errorCode);
+  
+  };
+}
+  async function fetchUsersList() {
+  const savedToken = sessionStorage.getItem('token');
+  if (!savedToken) {
+    console.log('Спочатку увійдіть у систему');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/users`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${savedToken}`
+      }
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      console.log('Помилка:', error.message);
+      return;
+    }
+    const users = await res.json();
+    console.log('Список користувачів:', users);
+  } catch (e) {
+    console.log('Помилка з’єднання з сервером', e);
+  }
+}
     registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       //Збирає всі поля з форми (username, password) у об'єкт.
@@ -85,6 +133,11 @@
         // Виводить результат у блок output, красиво форматуючи JSON.
         const result = await res.json();
         output.textContent = JSON.stringify(result, null, 2);
+         if (result.privateKey) {
+      savePrivateKeyToIndexedDB(result.privateKey);
+    } else if (result.message) {
+     console.log(result.message);
+    }
         // Якщо сервер недоступний або сталася інша помилка — виводить повідомлення про помилку
       } catch (err) {
         output.textContent = 'Помилка підключення до сервера';
@@ -112,9 +165,8 @@
       output.textContent = JSON.stringify(result, null, 2);
       showProfile(data.username, result.role); 
 
-      console.log(token);
-
       const savedRole = sessionStorage.getItem('role');
+      fetchUsersList();
       if (savedRole === 'admin') {
     adminPanelLink.style.display = 'block';
   } else{
@@ -127,7 +179,9 @@
       } 
       // Якщо сталася помилка з мережею чи сервером — виводиться повідомлення
       catch (err) {
-        output.textContent = 'Помилка підключення до сервера';
+      
+          output.textContent = 'Помилка підключення до сервера: ' + err.message;
+  console.error(err);
       }
     });
 
@@ -183,7 +237,7 @@ console.log(savedToken);
 
 
      logoutBtn.addEventListener('click', () => {
-      document.getElementById('adminContainer').innerHTML = html;
+      document.getElementById('adminContainer').innerHTML = '';
       adminPanelLink.style.display = 'none';
       hideProfile();
   });
