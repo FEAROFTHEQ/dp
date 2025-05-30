@@ -83,7 +83,7 @@ function generateRSAKeyPair() {
 function authorizeRoles(...allowedRoles) {
   return async (req, res, next) => {
     const authHeader = req.headers.authorization;
-console.log(authHeader);
+// console.log(authHeader);
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('Немає токена або невірний формат заголовку');
       return res.status(401).json({ message: 'Немає токена' });
@@ -106,6 +106,17 @@ console.log(authHeader);
       res.status(403).json({ message: 'Недійсний токен або помилка перевірки' });
     }
   };
+}
+
+function authenticateToken(req, res, next) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.sendStatus(401);
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user; // тут user має role
+    next();
+  });
 }
 
 // Маршрут для реєстрації користувача
@@ -183,20 +194,31 @@ app.get('/admin', authorizeRoles('admin'), (req, res) => {
 
 
 app.get('/users', authorizeRoles('admin', 'user'), async (req, res) => {
-  // try {
-  //   // Отримуємо список користувачів, повертаючи лише username і role
-  //   const users = await User.find({}, 'username role').exec();
+   try {
+    const users = await User.find({}, 'username role').exec();
+    // console.log('Список користувачів:', users);
+    res.json(users);
+  } catch (err) {
+    console.error('Помилка отримання користувачів:', err);
+    res.status(500).json({ message: 'Помилка сервера' });
+  }
+  //   console.log('Маршрут /users виконується');
+  // res.json({ test: 'ok' });
+});
 
-  //   // Вивід у консоль сервера
-  //   console.log('Список користувачів:', users);
+app.delete('/users/:id', authenticateToken, (req, res) => {
+  const currentUser = req.user; // тут буде role
+  if (currentUser.role !== 'admin') {
+    return res.status(403).json({ message: 'Доступ заборонено' });
+  }
+  const { _id } = req.params;
+    if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Доступ заборонено. Ви не адміністратор' });
+  }
+  console.log("Delete");
 
-  //   res.json(users);
-  // } catch (err) {
-  //   console.error('Помилка отримання користувачів:', err);
-  //   res.status(500).json({ message: 'Помилка сервера' });
-  // }
-    console.log('Маршрут /users виконується');
-  res.json({ test: 'ok' });
+
+  // виконуємо видалення
 });
 
 // Маршрут для виходу (логіки не має, просто повідомлення)

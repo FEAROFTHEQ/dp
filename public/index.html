@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="/favicon.png" type="image/png">
   <title>Create profile</title>
 </head>
 <body>
@@ -33,6 +34,8 @@
 </div>
 <button id="adminPanelLink" style="display: none;">Адмін-панель</button>
 <div id='adminContainer'> </div>
+<h2 style="margin-top:20px; display: none;" id="listHeader">Список користувачів</h2>
+<ul id="userList"></ul>
   <script>
     
     //Перевіряє, чи сайт відкритий локально 
@@ -51,6 +54,7 @@
     const registerForm = document.getElementById('registerForm');
     const loginForm = document.getElementById('loginForm');
     const output = document.getElementById('output');
+    const listHeader = document.getElementById('listHeader');
     adminPanelLink.style.display = 'none';
       let token =  sessionStorage.getItem('token') || '';
        function showProfile(username, role) {
@@ -58,6 +62,16 @@
         profileRole.textContent = role; 
       profileCard.style.display = 'block';
     }
+    let currentUser = {};
+  if(sessionStorage.getItem('token')){
+    const payload = JSON.parse(atob(token.split('.')[1]));
+ currentUser = {
+  id: payload.id,
+  username: payload.username,
+  role: payload.role,
+};
+  }
+
 
     // Функція сховати профіль
     function hideProfile() {
@@ -113,12 +127,38 @@ function savePrivateKeyToIndexedDB(privateKey) {
       return;
     }
     const users = await res.json();
-    console.log('Список користувачів:', users);
+    // console.log('Список користувачів:', users);
+       const list = document.getElementById('userList');
+    list.innerHTML = ''; // Очищаємо попередній список
+    
+    listHeader.style.display = 'block';
+    users.forEach(user => {
+      const li = document.createElement('li');
+      li.textContent = `${user.username} — роль: ${user.role}`;
+      
+    const deleteButton = document.createElement('button');
+    deleteButton.style.display = 'none';
+    deleteButton.classList.add('delete-button');
+    if (currentUser.role === 'admin' && user.role !== 'admin') {
+    deleteButton.style.display = 'inline-block';
+    deleteButton.textContent = 'Видалити';
+    deleteButton.addEventListener('click', () => {
+      // deleteUser(user._id); // Твоя функція видалення
+      console.log("DELETE");
+      console.log(user._id);
+      console.log(currentUser.role);
+    });
+    li.appendChild(deleteButton);}
+
+
+      
+      list.appendChild(li);
+    });
   } catch (e) {
     console.log('Помилка з’єднання з сервером', e);
   }
 }
-    registerForm.addEventListener('submit', async (e) => {
+registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       //Збирає всі поля з форми (username, password) у об'єкт.
       const data = Object.fromEntries(new FormData(registerForm));
@@ -162,6 +202,12 @@ function savePrivateKeyToIndexedDB(privateKey) {
       sessionStorage.setItem('token', result.token);
       sessionStorage.setItem('role', result.role);
       token = result.token;  // Оновлюємо локальну змінну для подальших запитів
+      const payload = JSON.parse(atob(result.token.split('.')[1]));
+  currentUser = {
+    id: payload.id,
+    username: payload.username,
+    role: payload.role,
+  };
       output.textContent = JSON.stringify(result, null, 2);
       showProfile(data.username, result.role); 
 
@@ -187,8 +233,8 @@ function savePrivateKeyToIndexedDB(privateKey) {
 
     adminPanelLink.addEventListener('click', async (e)=>{
         e.preventDefault();
-const savedToken = sessionStorage.getItem('token');
-console.log(savedToken);
+  const savedToken = sessionStorage.getItem('token');
+// console.log(savedToken);
 
   if (!savedToken) {
     output.textContent = 'Спочатку увійдіть у систему';
@@ -237,8 +283,12 @@ console.log(savedToken);
 
 
      logoutBtn.addEventListener('click', () => {
+      sessionStorage.removeItem('token');
       document.getElementById('adminContainer').innerHTML = '';
+      document.getElementById('userList').innerHTML = '';
+      listHeader.style.display = 'none';
       adminPanelLink.style.display = 'none';
+      
       hideProfile();
   });
 
