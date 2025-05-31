@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link href="
+https://cdn.jsdelivr.net/npm/modern-normalize@3.0.1/modern-normalize.min.css
+" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="/favicon.png" type="image/png">
   <title>Create profile</title>
@@ -32,7 +35,7 @@
     <div><strong>Роль:</strong> <span id="profileRole"></span></div> 
     <button id="logoutBtn">Вийти з системи</button>
 </div>
-<button id="adminPanelLink" style="display: none;">Адмін-панель</button>
+<button id="adminPanelLink" style="display: none;">Адмін-повідомлення</button>
 <div id='adminContainer'> </div>
 <h2 style="margin-top:20px; display: none;" id="listHeader">Список користувачів</h2>
 <ul id="userList"></ul>
@@ -142,12 +145,31 @@ function savePrivateKeyToIndexedDB(privateKey) {
     if (currentUser.role === 'admin' && user.role !== 'admin') {
     deleteButton.style.display = 'inline-block';
     deleteButton.textContent = 'Видалити';
-    deleteButton.addEventListener('click', () => {
-      // deleteUser(user._id); // Твоя функція видалення
-      console.log("DELETE");
-      console.log(user._id);
-      console.log(currentUser.role);
-    });
+  
+    deleteButton.addEventListener('click', async () => {
+      if (!confirm('Ви впевнені, що хочете видалити цього користувача?')) return;
+    const userId = user._id;
+
+    try {
+      const response = await fetch(`/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+    'Authorization': `Bearer ${token}`,
+  }
+      });
+
+      if (response.ok) {
+        console.log('Користувача', user.username, 'видалено');
+        deleteButton.closest('tr')?.remove(); // або видали з DOM інший елемент
+        console.log("user deleted");
+      } else {
+        const error = await response.text();
+        console.error('Помилка видалення:', error);
+      }
+    } catch (err) {
+      console.error("Помилка з'єднання:", err);
+    }
+  });
     li.appendChild(deleteButton);}
 
 
@@ -241,24 +263,6 @@ registerForm.addEventListener('submit', async (e) => {
     return;
   }
 
-  // try {
-  //   const res = await fetch(`${API_BASE}/admin`, {
-  //     method: 'GET',
-  //     headers: {
-  //       'Authorization': `Bearer ${savedToken}`
-  //     }
-  //   });
-
-  //   if (res.ok) {
-  //     // Якщо відповідь успішна — відкриваємо /admin у новій вкладці
-  //     window.location.href = `${API_BASE}/admin`;
-  //   } else {
-  //     const result = await res.json();
-  //     output.textContent = result.message || 'Доступ заборонено';
-  //   }
-  // } catch (err) {
-  //   output.textContent = 'Помилка з’єднання з сервером';
-  // }
  fetch('http://localhost:5000/admin', {
       method: 'GET',
       headers: {

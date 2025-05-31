@@ -112,7 +112,7 @@ function authenticateToken(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.sendStatus(401);
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, SECRET_KEY, (err, user) => {
     if (err) return res.sendStatus(403);
     req.user = user; // тут user має role
     next();
@@ -206,16 +206,31 @@ app.get('/users', authorizeRoles('admin', 'user'), async (req, res) => {
   // res.json({ test: 'ok' });
 });
 
-app.delete('/users/:id', authenticateToken, (req, res) => {
+app.delete('/users/:id', authenticateToken, async (req, res) => {
   const currentUser = req.user; // тут буде role
   if (currentUser.role !== 'admin') {
     return res.status(403).json({ message: 'Доступ заборонено' });
   }
-  const { _id } = req.params;
+  const id  = req.params.id;
+  if (req.user.id === id) {
+    return res.status(400).json({ message: 'Неможливо видалити самого себе' });
+  }
     if (req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Доступ заборонено. Ви не адміністратор' });
   }
-  console.log("Delete");
+   try {
+    const result = await User.deleteOne({ _id: id });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send('Користувача не знайдено');
+    }
+
+    res.status(200).send('Користувач видалений');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Помилка сервера');
+  }
+  
 
 
   // виконуємо видалення
