@@ -1,7 +1,10 @@
 // Зчитування .env змінних 
 // (дозволяє використовувати змінні середовища з файлу `.env`)
+const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 dotenv.config();
+// перевірка паролів
+const zxcvbn = require('zxcvbn');
 
 // Робота з файловими шляхами 
 // (вбудований модуль Node.js для коректної роботи з шляхами)
@@ -69,6 +72,12 @@ const userSchema = new mongoose.Schema({
 
 // Модель користувача на основі схеми
 const User = mongoose.model('User', userSchema);
+const failedLoginByUsername = {};
+const failedLoginByIP = {};
+
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCK_TIME = 15 * 60 * 1000; // 15 хвилин
+
 
 // Функція генерації пари RSA-ключів (2048 біт)
 function generateRSAKeyPair() {
@@ -79,6 +88,54 @@ function generateRSAKeyPair() {
   };
 }
 
+function isBlocked(attemptInfo) {
+  if (!attemptInfo) return false;
+  if (attemptInfo.count < MAX_FAILED_ATTEMPTS) return false;
+
+  const timePassed = Date.now() - attemptInfo.lastAttempt;
+  if (timePassed > LOCK_TIME) {
+    // Зняти блокування після таймауту
+    return false;
+  }
+  return true;
+}
+function recordFailedAttempt(storage, key) {
+  if (!storage[key]) {
+    storage[key] = { count: 1, lastAttempt: Date.now() };
+  } else {
+    storage[key].count += 1;
+    storage[key].lastAttempt = Date.now();
+  }
+}
+
+// Скидання лічильника після успішного входу
+function resetFailedAttempts(storage, key) {
+  if (storage[key]) {
+    delete storage[key];
+  }
+}
+function getRemainingAttempts(username) {
+  const attemptInfo = failedLoginByUsername[username];
+  if (!attemptInfo) return MAX_FAILED_ATTEMPTS;
+  if (Date.now() - attemptInfo.lastAttempt > LOCK_TIME) {
+    // Якщо час блокування минув — "скидаємо" лічильник
+    return MAX_FAILED_ATTEMPTS;
+  }
+  return Math.max(0, MAX_FAILED_ATTEMPTS - attemptInfo.count);
+}
+
+function checkPasswordStrength(password) {
+
+  const result = zxcvbn(password);
+  if (result.score < 4) {
+    return {
+      ok: false,
+      message: 'Пароль занадто слабкий. Спробуйте складніший.',
+      feedback: result.feedback,
+    };
+  }
+  return { ok: true };
+}
 
 function authorizeRoles(...allowedRoles) {
   return async (req, res, next) => {
@@ -119,6 +176,7 @@ function authenticateToken(req, res, next) {
   });
 }
 
+
 // Маршрут для реєстрації користувача
 app.post('/register', [
   body('username').isLength({ min: 3 }).withMessage('Ім’я користувача має містити щонайменше 3 символи'),
@@ -132,6 +190,12 @@ body('role').optional().isIn(['user', 'admin']).withMessage('Невідома р
 
   const { username, password } = req.body;
   const role = 'user';
+  console.log('Перед перевіркою пароля');
+  const check = checkPasswordStrength(password);
+  if (!check.ok) {
+    return res.status(400).json({ error: check.message, feedback: check.feedback });
+  }
+  console.log('Після перевірки пароля:', check);
   try {
     // Перевірка, чи існує користувач із таким username
     const userExists = await User.findOne({ username });
@@ -165,18 +229,42 @@ body('role').optional().isIn(['user', 'admin']).withMessage('Невідома р
 
 // Маршрут для входу користувача
 app.post('/login', async (req, res) => {
+    console.log('Отримано запит /login');
   const { username, password } = req.body;
+  const ip = req.ip;
+   if (isBlocked(failedLoginByUsername[username])) {
+    return res.status(429).json({ message: `Користувач тимчасово заблокований. Спробуйте пізніше.` });
+  }
+
+  // Перевірка блокування по IP
+  if (isBlocked(failedLoginByIP[ip])) {
+    return res.status(429).json({ message: `З вашої IP-адреси заблоковано надто багато спроб. Спробуйте пізніше.` });
+  }
 
   try {
     const user = await User.findOne({ username });
+
     if (!user) {
-      return res.status(400).json({ message: 'Користувача не знайдено' });
+        console.log('Користувача не знайдено для', username);
+      recordFailedAttempt(failedLoginByUsername, username);
+      recordFailedAttempt(failedLoginByIP, ip);
+      const remaining = getRemainingAttempts(username);
+      console.log(remaining);
+      return res.status(400).json({ message: 'Користувача не знайдено',remainingAttempts: remaining});
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Неправильний пароль' });
+      console.log('неправ пароль', username);
+      recordFailedAttempt(failedLoginByUsername, username);
+      recordFailedAttempt(failedLoginByIP, ip);
+      const remaining = getRemainingAttempts(username);
+      console.log(remaining);
+      return res.status(401).json({ message: 'Неправильний пароль', remainingAttempts: remaining });
     }
+
+    resetFailedAttempts(failedLoginByUsername, username);
+    resetFailedAttempts(failedLoginByIP, ip);
 
     const payload = { username: user.username, role: user.role };
     const token = jwt.sign(payload, SECRET_KEY, { expiresIn: '1h' });

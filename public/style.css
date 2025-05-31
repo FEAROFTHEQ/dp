@@ -161,3 +161,16 @@ button:hover {
   min-height: 100px;
   border-radius: 4px;
 }
+.weak{
+  outline: solid red 1px;
+}
+.strong{
+    outline: solid green 1px;
+}
+.weakFeed{
+  color: darkred;
+}
+.strongFeed{
+    color: darkgreen;
+}
+
