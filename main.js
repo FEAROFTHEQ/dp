@@ -78,7 +78,12 @@ const failedLoginByIP = {};
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_TIME = 15 * 60 * 1000; // 15 хвилин
 
-
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 хв
+  max: 100, // максимум 100 запитів за вікно
+  message: 'Занадто багато запитів. Спробуйте пізніше.'
+});
+const allowedOrigins = ['http://localhost:5000', 'https://dp-jha0.onrender.com/'];
 // Функція генерації пари RSA-ключів (2048 біт)
 function generateRSAKeyPair() {
   const keypair = forge.pki.rsa.generateKeyPair(2048);
@@ -176,11 +181,20 @@ function authenticateToken(req, res, next) {
   });
 }
 
-
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 // Маршрут для реєстрації користувача
 app.post('/register', [
   body('username').isLength({ min: 3 }).withMessage('Ім’я користувача має містити щонайменше 3 символи'),
-  body('password').isLength({ min: 6 }).withMessage('Пароль має містити щонайменше 6 символів'),
+  body('password').isLength({ min: 8 }).withMessage('Пароль має містити щонайменше 8 символів'),
 body('role').optional().isIn(['user', 'admin']).withMessage('Невідома роль')
 ], async (req, res) => {
   const errors = validationResult(req);
@@ -328,7 +342,7 @@ app.delete('/users/:id', authenticateToken, async (req, res) => {
 app.post('/logout', (req, res) => {
   res.json({ message: 'Вихід успішний' });
 });
-
+app.use(limiter);
 
 // Статичні файли з папки 'public'
 app.use(express.static(path.join(__dirname, 'public')));

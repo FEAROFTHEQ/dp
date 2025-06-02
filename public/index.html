@@ -16,6 +16,7 @@ https://cdn.jsdelivr.net/npm/modern-normalize@3.0.1/modern-normalize.min.css
     <form id="registerForm">
       <input type="text" name="username" placeholder="Ім’я користувача" required />
       <input id = "passwInput" type="password" name="password" placeholder="Пароль" required />
+      <input type="checkbox" id="passwordToggle" name="passwordToggle" />Показати пароль
       <div id="passwStr"></div>
       <button type="submit">Зареєструватися</button>
     </form>
@@ -52,7 +53,8 @@ https://cdn.jsdelivr.net/npm/modern-normalize@3.0.1/modern-normalize.min.css
     : 'https://dp-jha0.onrender.com';
     //тримання елементів із DOM
     const adminPanelLink = document.getElementById('adminPanelLink'); 
-    const passwInput = document.getElementById('passwInput'); 
+    const passwInput = document.getElementById('passwInput');
+    const passwordToggle = document.getElementById('passwordToggle'); 
     const passwStr = document.getElementById('passwStr'); 
     const profileRole = document.getElementById('profileRole'); 
      const profileCard = document.getElementById('profileCard');
@@ -337,8 +339,12 @@ async function fetchUsersList() {
     console.log('Помилка з’єднання з сервером', e);
   }
 }
+passwordToggle.addEventListener('change', function () {
+    passwInput.type = this.checked ? 'text' : 'password';
+  });
 registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      passwInput.type = 'password';
       //Збирає всі поля з форми (username, password) у об'єкт.
       const data = Object.fromEntries(new FormData(registerForm));
       try {
