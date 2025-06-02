@@ -122,8 +122,32 @@ passwInput.addEventListener('input', () => {
 });
 
 
-function savePrivateKeyToIndexedDB(privateKey) {
-  const request = indexedDB.open('CryptoKeysDB', 1);
+// Шифруємо приватний ключ рядком
+async function encryptPrivateKey(privateKeyString, password) {
+  const encoder = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16)); // сіль
+  const iv = crypto.getRandomValues(new Uint8Array(12));   // ініціалізаційний вектор
+  const key = await deriveKeyFromPassword(password, salt);
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    encoder.encode(privateKeyString)
+  );
+  return {
+    encryptedData: new Uint8Array(encrypted),
+    iv: iv,
+    salt: salt
+  };
+}
+
+function savePrivateKeyToIndexedDB(encryptedData, iv, salt) {
+  // Збереження у IndexedDB за твоєю логікою,
+  // але тепер замість відкритого ключа зберігаєш:
+  // encryptedData — Uint8Array,
+  // iv — Uint8Array,
+  // salt — Uint8Array
+  // Можна перетворити Uint8Array у base64 або масив чисел (через Array.from) перед збереженням.
+    const request = indexedDB.open('CryptoKeysDB', 1);
 
   request.onupgradeneeded = function(event) {
     const db = event.target.result;
@@ -136,17 +160,114 @@ function savePrivateKeyToIndexedDB(privateKey) {
     const db = event.target.result;
     const transaction = db.transaction(['keys'], 'readwrite');
     const store = transaction.objectStore('keys');
-    store.put(privateKey, 'privateKey');
-    console.log('Приватний ключ збережено в IndexedDB');
-    
+
+    const encryptedPackage = {
+      encryptedData: Array.from(encryptedData),
+      iv: Array.from(iv),
+      salt: Array.from(salt)
+    };
+
+    store.put(encryptedPackage, 'privateKey');
+    console.log(encryptedPackage);
+    console.log('Зашифрований приватний ключ збережено в IndexedDB');
   };
 
   request.onerror = function(event) {
     console.error('IndexedDB помилка:', event.target.errorCode);
-  
   };
 }
-  async function fetchUsersList() {
+// function savePrivateKeyToIndexedDB(privateKey) {
+//   const request = indexedDB.open('CryptoKeysDB', 1);
+
+//   request.onupgradeneeded = function(event) {
+//     const db = event.target.result;
+//     if (!db.objectStoreNames.contains('keys')) {
+//       db.createObjectStore('keys');
+//     }
+//   };
+
+//   request.onsuccess = function(event) {
+//     const db = event.target.result;
+//     const transaction = db.transaction(['keys'], 'readwrite');
+//     const store = transaction.objectStore('keys');
+//     store.put(privateKey, 'privateKey');
+//     console.log('Приватний ключ збережено в IndexedDB');
+    
+//   };
+
+//   request.onerror = function(event) {
+//     console.error('IndexedDB помилка:', event.target.errorCode);
+  
+//   };
+// }
+async function decryptPrivateKey(encryptedData, iv, salt, password) {
+  const key = await deriveKeyFromPassword(password, salt);
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    encryptedData
+  );
+  const decoder = new TextDecoder();
+  return decoder.decode(decrypted);
+}
+function loadEncryptedPrivateKeyFromIndexedDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('CryptoKeysDB', 1);
+
+    request.onsuccess = function(event) {
+      const db = event.target.result;
+      const transaction = db.transaction(['keys'], 'readonly');
+      const store = transaction.objectStore('keys');
+      const getRequest = store.get('privateKey');
+
+      getRequest.onsuccess = function() {
+        const result = getRequest.result;
+        if (result) {
+          resolve({
+            encryptedData: result.encryptedData,
+            iv: result.iv,
+            salt: result.salt
+          });
+        } else {
+          resolve({}); // Немає ключа
+        }
+      };
+
+      getRequest.onerror = function(event) {
+        reject(event.target.error);
+      };
+    };
+
+    request.onerror = function(event) {
+      reject(event.target.error);
+    };
+  });
+}
+async function deriveKeyFromPassword(password, salt) {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+
+  return await crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt,
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function fetchUsersList() {
   const savedToken = sessionStorage.getItem('token');
   if (!savedToken) {
     console.log('Спочатку увійдіть у систему');
@@ -238,7 +359,12 @@ registerForm.addEventListener('submit', async (e) => {
       passwInput.classList.remove('strong');
       }
          if (result.privateKey) {
-      savePrivateKeyToIndexedDB(result.privateKey);
+           const password = data.password;
+  const encryptedObj = await encryptPrivateKey(result.privateKey, password);
+
+  // Зберегти у IndexedDB не приватний ключ у відкритому вигляді, а зашифрований з iv і salt
+  savePrivateKeyToIndexedDB(encryptedObj.encryptedData, encryptedObj.iv, encryptedObj.salt);
+      // savePrivateKeyToIndexedDB(result.privateKey);
     } else if (result.message) {
      console.log(result.message);
     }
@@ -272,6 +398,27 @@ loginForm.addEventListener('submit', async (e) => {
     username: payload.username,
     role: payload.role,
   };
+const { encryptedData, iv, salt } = await loadEncryptedPrivateKeyFromIndexedDB();
+  if (!encryptedData || !iv || !salt) {
+    console.warn("Приватний ключ не знайдено в IndexedDB.");
+  } else {
+    try {
+      const privateKey = await decryptPrivateKey(
+        new Uint8Array(encryptedData),
+        new Uint8Array(iv),
+        new Uint8Array(salt),
+        data.password // пароль користувача
+      );
+      console.log("🔐 Приватний ключ розшифровано:", privateKey);
+      // 🔒 Тепер можеш зберігати privateKey у оперативній пам'яті або sessionStorage при потребі
+    } catch (e) {
+      console.error("❌ Не вдалося розшифрувати приватний ключ. Можливо, неправильний пароль.");
+      output.textContent = "Не вдалося розшифрувати приватний ключ. Можливо, пароль неправильний.";
+      return;
+    }
+  }
+
+
       output.textContent = JSON.stringify(result, null, 2);
       showProfile(data.username, result.role); 
 
@@ -299,7 +446,7 @@ loginForm.addEventListener('submit', async (e) => {
       }
     });
 
-    adminPanelLink.addEventListener('click', async (e)=>{
+adminPanelLink.addEventListener('click', async (e)=>{
         e.preventDefault();
   const savedToken = sessionStorage.getItem('token');
 // console.log(savedToken);
