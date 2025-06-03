@@ -1,486 +1,428 @@
 <!DOCTYPE html>
 <html lang="uk">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link href="
-https://cdn.jsdelivr.net/npm/modern-normalize@3.0.1/modern-normalize.min.css
-" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://cdn.jsdelivr.net/npm/modern-normalize@3.0.1/modern-normalize.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.png" type="image/png" />
   <title>Create profile</title>
 </head>
+
 <body>
   <div>
     <h1>Реєстрація</h1>
     <form id="registerForm">
       <input type="text" name="username" placeholder="Ім’я користувача" required />
-      <input id = "passwInput" type="password" name="password" placeholder="Пароль" required />
+      <input id="passwInput" type="password" name="password" placeholder="Пароль" required />
       <input type="checkbox" id="passwordToggle" name="passwordToggle" />Показати пароль
       <div id="passwStr"></div>
       <button type="submit">Зареєструватися</button>
     </form>
   </div>
-
-  <div> 
+  <div>
     <h1>Вхід</h1>
     <form id="loginForm">
       <input type="text" name="username" placeholder="Ім’я користувача" required />
-      <input type="password" name="password" placeholder="Пароль" required />
+      <input type="password" id="loginInput" name="password" placeholder="Пароль" required />
+      <input type="checkbox" id="passwordToggle2" name="passwordToggle" />Показати пароль
       <button type="submit">Увійти</button>
     </form>
   </div>
-<p id="output"></p>
- <div id="profileCard" style="display:none; border: 1px solid #ccc; padding: 10px; margin-top: 20px; max-width: 250px;">
-    <img src="profile.png" alt="Avatar" style="display:block; margin-bottom:10px; width: 50px"/>
+  <p id="output"></p>
+  <div id="profileCard" style="
+        display: none;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-top: 20px;
+        max-width: 250px;">
+    <img src="profile.png" alt="Avatar" style="display: block; margin-bottom: 10px; width: 50px" />
     <div><strong>Користувач:</strong> <span id="profileUsername"></span></div>
-    <div><strong>Роль:</strong> <span id="profileRole"></span></div> 
+    <div><strong>Роль:</strong> <span id="profileRole"></span></div>
     <button id="logoutBtn">Вийти з системи</button>
-</div>
-<button id="adminPanelLink" style="display: none;">Адмін-повідомлення</button>
-<div id='adminContainer'> </div>
-<h2 style="margin-top:20px; display: none;" id="listHeader">Список користувачів</h2>
-<ul id="userList"></ul>
-<script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
-<script src="https://unpkg.com/node-forge@1.0.0/dist/forge.min.js"></script>
+  </div>
+  <button id="adminPanelLink" style="display: none">
+    Адмін-повідомлення
+  </button>
+  <div id="adminContainer"></div>
+  <h2 style="margin-top: 20px; display: none" id="listHeader">
+    Список користувачів
+  </h2>
+  <ul id="userList"></ul>
+  <script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
+  <script src="https://unpkg.com/node-forge@1.0.0/dist/forge.min.js"></script>
   <script>
-console.log(typeof forge);
-    //Перевіряє, чи сайт відкритий локально 
-    const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-     //Якщо сайт відкрито локально — використовує http://localhost:5000.
-    //Інакше — використовує адресу, задеплоєну на Render або інший хостинг.
+    const isLocalhost =
+      location.hostname === "localhost" || location.hostname === "127.0.0.1";
     const API_BASE = isLocalhost
-    ? 'http://localhost:5000'
-    : 'https://dp-jha0.onrender.com';
-    //тримання елементів із DOM
-    const adminPanelLink = document.getElementById('adminPanelLink'); 
-    const passwInput = document.getElementById('passwInput');
-    const passwordToggle = document.getElementById('passwordToggle'); 
-    const passwStr = document.getElementById('passwStr'); 
-    const profileRole = document.getElementById('profileRole'); 
-     const profileCard = document.getElementById('profileCard');
-    const profileUsername = document.getElementById('profileUsername');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const registerForm = document.getElementById('registerForm');
-    const loginForm = document.getElementById('loginForm');
-    const output = document.getElementById('output');
-    const listHeader = document.getElementById('listHeader');
-    adminPanelLink.style.display = 'none';
-      let token =  sessionStorage.getItem('token') || '';
-       function showProfile(username, role) {
+      ? "http://localhost:5000"
+      : "https://dp-jha0.onrender.com";
+    const adminPanelLink = document.getElementById("adminPanelLink");
+    const passwInput = document.getElementById("passwInput");
+    const passwordToggle = document.getElementById("passwordToggle");
+    const passwordToggle2 = document.getElementById("passwordToggle2");
+    const passwStr = document.getElementById("passwStr");
+    const loginInput = document.getElementById("loginInput");
+    const profileRole = document.getElementById("profileRole");
+    const profileCard = document.getElementById("profileCard");
+    const profileUsername = document.getElementById("profileUsername");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const registerForm = document.getElementById("registerForm");
+    const loginForm = document.getElementById("loginForm");
+    const output = document.getElementById("output");
+    const listHeader = document.getElementById("listHeader");
+    adminPanelLink.style.display = "none";
+    let token = sessionStorage.getItem("token") || "";
+    function showProfile(username, role) {
       profileUsername.textContent = username;
-        profileRole.textContent = role; 
-      profileCard.style.display = 'block';
+      profileRole.textContent = role;
+      profileCard.style.display = "block";
     }
     let currentUser = {};
-  if(sessionStorage.getItem('token')){
-    const payload = JSON.parse(atob(token.split('.')[1]));
- currentUser = {
-  id: payload.id,
-  username: payload.username,
-  role: payload.role,
-};
-  }
-function generateRSAKeyPair() {
-  const keypair = forge.pki.rsa.generateKeyPair(2048);
-  return {
-    publicKey: forge.pki.publicKeyToPem(keypair.publicKey),
-    privateKey: forge.pki.privateKeyToPem(keypair.privateKey)
-  };
-}
-
-    // Функція сховати профіль
-    function hideProfile() {
-      profileCard.style.display = 'none';
-      profileUsername.textContent = '';
-      profileRole.textContent = '';
-      token = '';
-      sessionStorage.removeItem('token');
-      sessionStorage.removeItem('role');
-      output.textContent = 'Ви вийшли з системи';
+    if (sessionStorage.getItem("token")) {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      currentUser = {
+        id: payload.id,
+        username: payload.username,
+        role: payload.role,
+      };
     }
-
-
-passwInput.addEventListener('input', () => {
-  const password = passwInput.value;
-  const result = zxcvbn(password);
-
-  const score = result.score; // 0 - 4
-  let feedback = "";
-
-  if (score < 4) {
-    feedback = 'Занадто слабкий пароль';
-    passwInput.classList.remove('strong');
-    passwInput.classList.add('weak');
-
-    passwStr.classList.remove('strongFeed');
-    passwStr.classList.add('weakFeed');
-  } else {
-    feedback = 'Пароль надійний';
-    passwInput.classList.remove('weak');
-    passwInput.classList.add('strong');
-
-    passwStr.classList.remove('weakFeed');
-    passwStr.classList.add('strongFeed');
-  }
-
-  passwStr.innerHTML = `
+    function generateRSAKeyPair() {
+      const keypair = forge.pki.rsa.generateKeyPair(2048);
+      return {
+        publicKey: forge.pki.publicKeyToPem(keypair.publicKey),
+        privateKey: forge.pki.privateKeyToPem(keypair.privateKey),
+      };
+    }
+    function hideProfile() {
+      profileCard.style.display = "none";
+      profileUsername.textContent = "";
+      profileRole.textContent = "";
+      token = "";
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("role");
+      output.textContent = "Ви вийшли з системи";
+    }
+    passwInput.addEventListener("input", () => {
+      const password = passwInput.value;
+      const result = zxcvbn(password);
+      const score = result.score;
+      let feedback = "";
+      if (score < 4) {
+        feedback = "Занадто слабкий пароль";
+        passwInput.classList.remove("strong");
+        passwInput.classList.add("weak");
+        passwStr.classList.remove("strongFeed");
+        passwStr.classList.add("weakFeed");
+      } else {
+        feedback = "Пароль надійний";
+        passwInput.classList.remove("weak");
+        passwInput.classList.add("strong");
+        passwStr.classList.remove("weakFeed");
+        passwStr.classList.add("strongFeed");
+      }
+      passwStr.innerHTML = `
     <p>Рівень надійності: ${score} / 4</p>
     <p>${feedback}</p>
   `;
-});
-
-
-// Шифруємо приватний ключ рядком
-async function encryptPrivateKey(privateKeyString, password) {
-  const encoder = new TextEncoder();
-  const salt = crypto.getRandomValues(new Uint8Array(16)); // сіль
-  const iv = crypto.getRandomValues(new Uint8Array(12));   // ініціалізаційний вектор
-  const key = await deriveKeyFromPassword(password, salt);
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: iv },
-    key,
-    encoder.encode(privateKeyString)
-  );
-  return {
-    encryptedData: new Uint8Array(encrypted),
-    iv: iv,
-    salt: salt
-  };
-}
-
-function savePrivateKeyToIndexedDB(encryptedData, iv, salt) {
-  // Збереження у IndexedDB за твоєю логікою,
-  // але тепер замість відкритого ключа зберігаєш:
-  // encryptedData — Uint8Array,
-  // iv — Uint8Array,
-  // salt — Uint8Array
-  // Можна перетворити Uint8Array у base64 або масив чисел (через Array.from) перед збереженням.
-    const request = indexedDB.open('CryptoKeysDB', 1);
-
-  request.onupgradeneeded = function(event) {
-    const db = event.target.result;
-    if (!db.objectStoreNames.contains('keys')) {
-      db.createObjectStore('keys');
+    });
+    async function encryptPrivateKey(privateKeyString, password) {
+      const encoder = new TextEncoder();
+      const salt = crypto.getRandomValues(new Uint8Array(16)); // сіль
+      const iv = crypto.getRandomValues(new Uint8Array(12)); // ініціалізаційний вектор
+      const key = await deriveKeyFromPassword(password, salt);
+      const encrypted = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: iv },
+        key,
+        encoder.encode(privateKeyString)
+      );
+      return {
+        encryptedData: new Uint8Array(encrypted),
+        iv: iv,
+        salt: salt,
+      };
     }
-  };
-
-  request.onsuccess = function(event) {
-    const db = event.target.result;
-    const transaction = db.transaction(['keys'], 'readwrite');
-    const store = transaction.objectStore('keys');
-
-    const encryptedPackage = {
-      encryptedData: Array.from(encryptedData),
-      iv: Array.from(iv),
-      salt: Array.from(salt)
-    };
-
-    store.put(encryptedPackage, 'privateKey');
-    console.log(encryptedPackage);
-    console.log('Зашифрований приватний ключ збережено в IndexedDB');
-  };
-
-  request.onerror = function(event) {
-    console.error('IndexedDB помилка:', event.target.errorCode);
-  };
-}
-
-async function decryptPrivateKey(encryptedData, iv, salt, password) {
-  const key = await deriveKeyFromPassword(password, salt);
-  const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: iv },
-    key,
-    encryptedData
-  );
-  const decoder = new TextDecoder();
-  return decoder.decode(decrypted);
-}
-function loadEncryptedPrivateKeyFromIndexedDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('CryptoKeysDB', 1);
-
-    request.onsuccess = function(event) {
-      const db = event.target.result;
-      const transaction = db.transaction(['keys'], 'readonly');
-      const store = transaction.objectStore('keys');
-      const getRequest = store.get('privateKey');
-
-      getRequest.onsuccess = function() {
-        const result = getRequest.result;
-        if (result) {
-          resolve({
-            encryptedData: result.encryptedData,
-            iv: result.iv,
-            salt: result.salt
-          });
-        } else {
-          resolve({}); // Немає ключа
+    function savePrivateKeyToIndexedDB(encryptedData, iv, salt) {
+      const request = indexedDB.open("CryptoKeysDB", 1);
+      request.onupgradeneeded = function (event) {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains("keys")) {
+          db.createObjectStore("keys");
         }
       };
-
-      getRequest.onerror = function(event) {
-        reject(event.target.error);
+      request.onsuccess = function (event) {
+        const db = event.target.result;
+        const transaction = db.transaction(["keys"], "readwrite");
+        const store = transaction.objectStore("keys");
+        const encryptedPackage = {
+          encryptedData: Array.from(encryptedData),
+          iv: Array.from(iv),
+          salt: Array.from(salt),
+        };
+        store.put(encryptedPackage, "privateKey");
+        console.log("Зашифрований приватний ключ збережено в IndexedDB");
       };
-    };
-
-    request.onerror = function(event) {
-      reject(event.target.error);
-    };
-  });
-}
-async function deriveKeyFromPassword(password, salt) {
-  const encoder = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(password),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
-
-  return await crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: salt,
-      iterations: 100000,
-      hash: 'SHA-256'
-    },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
-
-async function fetchUsersList() {
-  const savedToken = sessionStorage.getItem('token');
-  if (!savedToken) {
-    console.log('Спочатку увійдіть у систему');
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/users`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${savedToken}`
-      }
-    });
-    if (!res.ok) {
-      const error = await res.json();
-      console.log('Помилка:', error.message);
-      return;
+      request.onerror = function (event) {
+        console.error("IndexedDB помилка:", event.target.errorCode);
+      };
     }
-    const users = await res.json();
-    // console.log('Список користувачів:', users);
-       const list = document.getElementById('userList');
-    list.innerHTML = ''; // Очищаємо попередній список
-    
-    listHeader.style.display = 'block';
-    users.forEach(user => {
-      const li = document.createElement('li');
-      li.textContent = `${user.username} — роль: ${user.role}`;
-      
-    const deleteButton = document.createElement('button');
-    deleteButton.style.display = 'none';
-    deleteButton.classList.add('delete-button');
-    if (currentUser.role === 'admin' && user.role !== 'admin') {
-    deleteButton.style.display = 'inline-block';
-    deleteButton.textContent = 'Видалити';
-  
-    deleteButton.addEventListener('click', async () => {
-      if (!confirm('Ви впевнені, що хочете видалити цього користувача?')) return;
-    const userId = user._id;
-
-    try {
-      const response = await fetch(`/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-    'Authorization': `Bearer ${token}`,
-  }
+    async function decryptPrivateKey(encryptedData, iv, salt, password) {
+      const key = await deriveKeyFromPassword(password, salt);
+      const decrypted = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv },
+        key,
+        encryptedData
+      );
+      const decoder = new TextDecoder();
+      return decoder.decode(decrypted);
+    }
+    function loadEncryptedPrivateKeyFromIndexedDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open("CryptoKeysDB", 1);
+        request.onsuccess = function (event) {
+          const db = event.target.result;
+          const transaction = db.transaction(["keys"], "readonly");
+          const store = transaction.objectStore("keys");
+          const getRequest = store.get("privateKey");
+          getRequest.onsuccess = function () {
+            const result = getRequest.result;
+            if (result) {
+              resolve({
+                encryptedData: result.encryptedData,
+                iv: result.iv,
+                salt: result.salt,
+              });
+            } else {
+              resolve({}); // Немає ключа
+            }
+          };
+          getRequest.onerror = function (event) {
+            reject(event.target.error);
+          };
+        };
+        request.onerror = function (event) {
+          reject(event.target.error);
+        };
       });
-
-      if (response.ok) {
-        console.log('Користувача', user.username, 'видалено');
-        deleteButton.closest('li')?.remove(); // або видали з DOM інший елемент
-        console.log("user deleted");
-      } else {
-        const error = await response.text();
-        console.error('Помилка видалення:', error);
-      }
-    } catch (err) {
-      console.error("Помилка з'єднання:", err);
     }
-  });
-    li.appendChild(deleteButton);}
-
-
-      
-      list.appendChild(li);
-    });
-  } catch (e) {
-    console.log('Помилка з’єднання з сервером', e);
-  }
-}
-passwordToggle.addEventListener('change', function () {
-    passwInput.type = this.checked ? 'text' : 'password';
-  });
-registerForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      passwInput.type = 'password';
-      //Збирає всі поля з форми (username, password) у об'єкт.
-       const { publicKey, privateKey } = generateRSAKeyPair();
-      const data = Object.fromEntries(new FormData(registerForm));
-        const payload  = { ...data, publicKey }; 
+    async function deriveKeyFromPassword(password, salt) {
+      const encoder = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(password),
+        "PBKDF2",
+        false,
+        ["deriveKey"]
+      );
+      return await crypto.subtle.deriveKey(
+        {
+          name: "PBKDF2",
+          salt: salt,
+          iterations: 100000,
+          hash: "SHA-256",
+        },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+      );
+    }
+    async function fetchUsersList() {
+      const savedToken = sessionStorage.getItem("token");
+      if (!savedToken) {
+        console.log("Спочатку увійдіть у систему");
+        return;
+      }
       try {
-        //Надсилає POST-запит на /register (локально або на хостингу).Передає дані у форматі JSON.
+        const res = await fetch(`${API_BASE}/users`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${savedToken}`,
+          },
+        });
+        if (!res.ok) {
+          const error = await res.json();
+          console.log("Помилка:", error.message);
+          return;
+        }
+        const users = await res.json();
+        const list = document.getElementById("userList");
+        list.innerHTML = "";
+        listHeader.style.display = "block";
+        users.forEach((user) => {
+          const li = document.createElement("li");
+          li.textContent = `${user.username} — роль: ${user.role}`;
+          const deleteButton = document.createElement("button");
+          deleteButton.style.display = "none";
+          deleteButton.classList.add("delete-button");
+          if (currentUser.role === "admin" && user.role !== "admin") {
+            deleteButton.style.display = "inline-block";
+            deleteButton.textContent = "Видалити";
+            deleteButton.addEventListener("click", async () => {
+              if (
+                !confirm("Ви впевнені, що хочете видалити цього користувача?")
+              )
+                return;
+              const userId = user._id;
+              try {
+                const response = await fetch(`/users/${userId}`, {
+                  method: "DELETE",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                });
+                if (response.ok) {
+                  console.log("Користувача", user.username, "видалено");
+                  deleteButton.closest("li")?.remove(); // або видали з DOM інший елемент
+                } else {
+                  const error = await response.text();
+                  console.error("Помилка видалення:", error);
+                }
+              } catch (err) {
+                console.error("Помилка з'єднання:", err);
+              }
+            });
+            li.appendChild(deleteButton);
+          }
+          list.appendChild(li);
+        });
+      } catch (e) {
+        console.log("Помилка з’єднання з сервером", e);
+      }
+    }
+    passwordToggle.addEventListener("change", function () {
+      passwInput.type = this.checked ? "text" : "password";
+    });
+    passwordToggle2.addEventListener("change", function () {
+      loginInput.type = this.checked ? "text" : "password";
+    });
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      passwInput.type = "password";
+      const { publicKey, privateKey } = generateRSAKeyPair();
+      const data = Object.fromEntries(new FormData(registerForm));
+      const payload = { ...data, publicKey };
+      try {
         const res = await fetch(`${API_BASE}/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        // Отримує відповідь від сервера (наприклад, { message: "Реєстрація успішна", privateKey: "..." }).
-        // Виводить результат у блок output, красиво форматуючи JSON.
         const result = await res.json();
         output.textContent = JSON.stringify(result, null, 2);
         if (res.ok && result.message) {
-      // Якщо успіх — показуємо повідомлення зеленим
-      registerForm.reset();
-      passwStr.innerHTML= '';
-      passwInput.classList.remove('strong');
-      }
-         
-   const password = data.password;
-  const encryptedObj = await encryptPrivateKey(privateKey, password);
-
-  // Зберегти у IndexedDB не приватний ключ у відкритому вигляді, а зашифрований з iv і salt
-  savePrivateKeyToIndexedDB(encryptedObj.encryptedData, encryptedObj.iv, encryptedObj.salt);
-      // savePrivateKeyToIndexedDB(result.privateKey);
-    
-        // Якщо сервер недоступний або сталася інша помилка — виводить повідомлення про помилку
+          registerForm.reset();
+          passwStr.innerHTML = "";
+          passwInput.classList.remove("strong");
+        }
+        const password = data.password;
+        const encryptedObj = await encryptPrivateKey(privateKey, password);
+        savePrivateKeyToIndexedDB(
+          encryptedObj.encryptedData,
+          encryptedObj.iv,
+          encryptedObj.salt
+        );
       } catch (err) {
-        output.textContent = 'Помилка підключення до сервера';
+        output.textContent = "Помилка підключення до сервера";
       }
     });
-
-loginForm.addEventListener('submit', async (e) => {
+    loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      //Отримує дані з полів форми loginForm (зазвичай username, password) і формує з них об'єкт.
+      loginInput.type = "password";
       const data = Object.fromEntries(new FormData(loginForm));
       try {
-        //Надсилає POST-запит до /login, передаючи JSON-дані для входу.
         const res = await fetch(`${API_BASE}/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
         });
-        // Читає JSON-відповідь від сервера. Якщо вхід успішний, отримаєш{ message: 'Успішний вхід', token: 'JWT_ТОКЕН' }
         const result = await res.json();
         if (res.ok) {
-      // Зберігаємо токен у sessionStorage
-      sessionStorage.setItem('token', result.token);
-      sessionStorage.setItem('role', result.role);
-      token = result.token;  // Оновлюємо локальну змінну для подальших запитів
-      const payload = JSON.parse(atob(result.token.split('.')[1]));
-  currentUser = {
-    id: payload.id,
-    username: payload.username,
-    role: payload.role,
-  };
-const { encryptedData, iv, salt } = await loadEncryptedPrivateKeyFromIndexedDB();
-  if (!encryptedData || !iv || !salt) {
-    console.warn("Приватний ключ не знайдено в IndexedDB.");
-  } else {
-    try {
-      const privateKey = await decryptPrivateKey(
-        new Uint8Array(encryptedData),
-        new Uint8Array(iv),
-        new Uint8Array(salt),
-        data.password // пароль користувача
-      );
-      console.log("🔐 Приватний ключ розшифровано:", privateKey);
-      // 🔒 Тепер можеш зберігати privateKey у оперативній пам'яті або sessionStorage при потребі
-    } catch (e) {
-      console.error("❌ Не вдалося розшифрувати приватний ключ. Можливо, неправильний пароль.");
-      output.textContent = "Не вдалося розшифрувати приватний ключ. Можливо, пароль неправильний.";
-      return;
-    }
-  }
-
-
-      output.textContent = JSON.stringify(result, null, 2);
-      showProfile(data.username, result.role); 
-
-      const savedRole = sessionStorage.getItem('role');
-      fetchUsersList();
-      if (savedRole === 'admin') {
-    adminPanelLink.style.display = 'block';
-  } else{
-    adminPanelLink.style.display = 'none';
-  }
-    } else {
-       if (result.remainingAttempts !== undefined) {
-    output.textContent = `${result.message}. Залишилось спроб: ${result.remainingAttempts}`;
-  } else {
-    output.textContent = result.message || 'Помилка входу';
-  }
-    }
-  
-      } 
-      // Якщо сталася помилка з мережею чи сервером — виводиться повідомлення
-      catch (err) {
-      
-          output.textContent = 'Помилка підключення до сервера: ' + err.message;
-  console.error(err);
+          sessionStorage.setItem("token", result.token);
+          sessionStorage.setItem("role", result.role);
+          token = result.token;
+          const payload = JSON.parse(atob(result.token.split(".")[1]));
+          currentUser = {
+            id: payload.id,
+            username: payload.username,
+            role: payload.role,
+          };
+          const { encryptedData, iv, salt } =
+            await loadEncryptedPrivateKeyFromIndexedDB();
+          if (!encryptedData || !iv || !salt) {
+            console.warn("Приватний ключ не знайдено в IndexedDB.");
+          } else {
+            try {
+              const privateKey = await decryptPrivateKey(
+                new Uint8Array(encryptedData),
+                new Uint8Array(iv),
+                new Uint8Array(salt),
+                data.password
+              );
+            } catch (e) {
+              console.error(
+                "❌ Не вдалося розшифрувати приватний ключ. Можливо, неправильний пароль."
+              );
+              output.textContent =
+                "Не вдалося розшифрувати приватний ключ. Можливо, пароль неправильний.";
+              return;
+            }
+          }
+          output.textContent = JSON.stringify(result, null, 2);
+          showProfile(data.username, result.role);
+          const savedRole = sessionStorage.getItem("role");
+          fetchUsersList();
+          if (savedRole === "admin") {
+            adminPanelLink.style.display = "block";
+          } else {
+            adminPanelLink.style.display = "none";
+          }
+        } else {
+          if (result.remainingAttempts !== undefined) {
+            output.textContent = `${result.message}. Залишилось спроб: ${result.remainingAttempts}`;
+          } else {
+            output.textContent = result.message || "Помилка входу";
+          }
+        }
+      } catch (err) {
+        output.textContent = "Помилка підключення до сервера: " + err.message;
+        console.error(err);
       }
     });
-
-adminPanelLink.addEventListener('click', async (e)=>{
-        e.preventDefault();
-  const savedToken = sessionStorage.getItem('token');
-// console.log(savedToken);
-
-  if (!savedToken) {
-    output.textContent = 'Спочатку увійдіть у систему';
-    return;
-  }
-
- fetch('http://localhost:5000/admin', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
+    adminPanelLink.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const savedToken = sessionStorage.getItem("token");
+      if (!savedToken) {
+        output.textContent = "Спочатку увійдіть у систему";
+        return;
       }
-    })
-    .then(res => {
-      if (!res.ok) throw new Error('Не авторизовано');
-      return res.text(); // Очікується, що сервер поверне HTML
-    })
-    .then(html => {
-    // замінює весь body
-      // або вставити у конкретний div:
-      document.getElementById('adminContainer').innerHTML = html;
-    })
-    .catch(err => {
-      console.error('Доступ заборонено:', err.message);
-      alert('У вас немає доступу до панелі адміністратора');
+      fetch("http://localhost:5000/admin", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Не авторизовано");
+          return res.text();
+        })
+        .then((html) => {
+          document.getElementById("adminContainer").innerHTML = html;
+        })
+        .catch((err) => {
+          console.error("Доступ заборонено:", err.message);
+          alert("У вас немає доступу до панелі адміністратора");
+        });
     });
-
-    });
-
-
-     logoutBtn.addEventListener('click', () => {
-      sessionStorage.removeItem('token');
-      document.getElementById('adminContainer').innerHTML = '';
-      document.getElementById('userList').innerHTML = '';
-      listHeader.style.display = 'none';
-      adminPanelLink.style.display = 'none';
-      
+    logoutBtn.addEventListener("click", () => {
+      sessionStorage.removeItem("token");
+      document.getElementById("adminContainer").innerHTML = "";
+      document.getElementById("userList").innerHTML = "";
+      listHeader.style.display = "none";
+      adminPanelLink.style.display = "none";
       hideProfile();
-  });
-
-
-  
+    });
   </script>
 </body>
 </html>
