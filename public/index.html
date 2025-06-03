@@ -397,7 +397,7 @@
         output.textContent = "Спочатку увійдіть у систему";
         return;
       }
-      fetch("http://localhost:5000/admin", {
+      fetch(`${API_BASE}/admin`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -412,7 +412,7 @@
         })
         .catch((err) => {
           console.error("Доступ заборонено:", err.message);
-          alert("У вас немає доступу до панелі адміністратора");
+          alert("У вас немає доступу до повідомлення адміністратора");
         });
     });
     logoutBtn.addEventListener("click", () => {
