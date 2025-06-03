@@ -83,7 +83,7 @@ const limiter = rateLimit({
   max: 100, // максимум 100 запитів за вікно
   message: 'Занадто багато запитів. Спробуйте пізніше.'
 });
-const allowedOrigins = ['http://localhost:5000', 'https://dp-jha0.onrender.com/'];
+const allowedOrigins = ['http://localhost:5000', 'https://dp-jha0.onrender.com'];
 // Функція генерації пари RSA-ключів (2048 біт)
 // function generateRSAKeyPair() {
 //   const keypair = forge.pki.rsa.generateKeyPair(2048);
@@ -183,6 +183,7 @@ function authenticateToken(req, res, next) {
 
 app.use(cors({
   origin: (origin, callback) => {
+     console.log('CORS request from:', origin);
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
