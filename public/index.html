@@ -42,8 +42,9 @@ https://cdn.jsdelivr.net/npm/modern-normalize@3.0.1/modern-normalize.min.css
 <h2 style="margin-top:20px; display: none;" id="listHeader">Список користувачів</h2>
 <ul id="userList"></ul>
 <script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
+<script src="https://unpkg.com/node-forge@1.0.0/dist/forge.min.js"></script>
   <script>
-
+console.log(typeof forge);
     //Перевіряє, чи сайт відкритий локально 
     const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
      //Якщо сайт відкрито локально — використовує http://localhost:5000.
@@ -80,7 +81,13 @@ https://cdn.jsdelivr.net/npm/modern-normalize@3.0.1/modern-normalize.min.css
   role: payload.role,
 };
   }
-
+function generateRSAKeyPair() {
+  const keypair = forge.pki.rsa.generateKeyPair(2048);
+  return {
+    publicKey: forge.pki.publicKeyToPem(keypair.publicKey),
+    privateKey: forge.pki.privateKeyToPem(keypair.privateKey)
+  };
+}
 
     // Функція сховати профіль
     function hideProfile() {
@@ -178,30 +185,7 @@ function savePrivateKeyToIndexedDB(encryptedData, iv, salt) {
     console.error('IndexedDB помилка:', event.target.errorCode);
   };
 }
-// function savePrivateKeyToIndexedDB(privateKey) {
-//   const request = indexedDB.open('CryptoKeysDB', 1);
 
-//   request.onupgradeneeded = function(event) {
-//     const db = event.target.result;
-//     if (!db.objectStoreNames.contains('keys')) {
-//       db.createObjectStore('keys');
-//     }
-//   };
-
-//   request.onsuccess = function(event) {
-//     const db = event.target.result;
-//     const transaction = db.transaction(['keys'], 'readwrite');
-//     const store = transaction.objectStore('keys');
-//     store.put(privateKey, 'privateKey');
-//     console.log('Приватний ключ збережено в IndexedDB');
-    
-//   };
-
-//   request.onerror = function(event) {
-//     console.error('IndexedDB помилка:', event.target.errorCode);
-  
-//   };
-// }
 async function decryptPrivateKey(encryptedData, iv, salt, password) {
   const key = await deriveKeyFromPassword(password, salt);
   const decrypted = await crypto.subtle.decrypt(
@@ -346,13 +330,15 @@ registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       passwInput.type = 'password';
       //Збирає всі поля з форми (username, password) у об'єкт.
+       const { publicKey, privateKey } = generateRSAKeyPair();
       const data = Object.fromEntries(new FormData(registerForm));
+        const payload  = { ...data, publicKey }; 
       try {
         //Надсилає POST-запит на /register (локально або на хостингу).Передає дані у форматі JSON.
         const res = await fetch(`${API_BASE}/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+          body: JSON.stringify(payload),
         });
         // Отримує відповідь від сервера (наприклад, { message: "Реєстрація успішна", privateKey: "..." }).
         // Виводить результат у блок output, красиво форматуючи JSON.
@@ -364,16 +350,14 @@ registerForm.addEventListener('submit', async (e) => {
       passwStr.innerHTML= '';
       passwInput.classList.remove('strong');
       }
-         if (result.privateKey) {
-           const password = data.password;
-  const encryptedObj = await encryptPrivateKey(result.privateKey, password);
+         
+   const password = data.password;
+  const encryptedObj = await encryptPrivateKey(privateKey, password);
 
   // Зберегти у IndexedDB не приватний ключ у відкритому вигляді, а зашифрований з iv і salt
   savePrivateKeyToIndexedDB(encryptedObj.encryptedData, encryptedObj.iv, encryptedObj.salt);
       // savePrivateKeyToIndexedDB(result.privateKey);
-    } else if (result.message) {
-     console.log(result.message);
-    }
+    
         // Якщо сервер недоступний або сталася інша помилка — виводить повідомлення про помилку
       } catch (err) {
         output.textContent = 'Помилка підключення до сервера';

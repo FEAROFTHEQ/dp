@@ -85,13 +85,13 @@ const limiter = rateLimit({
 });
 const allowedOrigins = ['http://localhost:5000', 'https://dp-jha0.onrender.com/'];
 // Функція генерації пари RSA-ключів (2048 біт)
-function generateRSAKeyPair() {
-  const keypair = forge.pki.rsa.generateKeyPair(2048);
-  return {
-    publicKey: forge.pki.publicKeyToPem(keypair.publicKey),
-    privateKey: forge.pki.privateKeyToPem(keypair.privateKey)
-  };
-}
+// function generateRSAKeyPair() {
+//   const keypair = forge.pki.rsa.generateKeyPair(2048);
+//   return {
+//     publicKey: forge.pki.publicKeyToPem(keypair.publicKey),
+//     privateKey: forge.pki.privateKeyToPem(keypair.privateKey)
+//   };
+// }
 
 function isBlocked(attemptInfo) {
   if (!attemptInfo) return false;
@@ -195,14 +195,15 @@ app.use(cors({
 app.post('/register', [
   body('username').isLength({ min: 3 }).withMessage('Ім’я користувача має містити щонайменше 3 символи'),
   body('password').isLength({ min: 8 }).withMessage('Пароль має містити щонайменше 8 символів'),
-body('role').optional().isIn(['user', 'admin']).withMessage('Невідома роль')
+body('role').optional().isIn(['user', 'admin']).withMessage('Невідома роль'),
+ body('publicKey').notEmpty().withMessage('Public key is required')
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { username, password } = req.body;
+  const { username, password, publicKey } = req.body;
   const role = 'user';
   console.log('Перед перевіркою пароля');
   const check = checkPasswordStrength(password);
@@ -221,20 +222,20 @@ body('role').optional().isIn(['user', 'admin']).withMessage('Невідома р
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Генерація RSA ключів
-    const rsaKeys = generateRSAKeyPair();
+    // const rsaKeys = generateRSAKeyPair();
 
     // Створення нового користувача
     const newUser = new User({
       username,
       password: hashedPassword,
-      publicKey: rsaKeys.publicKey,
+      publicKey,
       role: 'user'
     });
 
     await newUser.save();
 
     // Відповідь із приватним ключем, який потрібно зберегти на клієнті
-    res.json({ message: 'Реєстрація успішна', privateKey: rsaKeys.privateKey });
+    res.json({ message: 'Реєстрація успішна' });
   } catch (err) {
     console.error('Помилка під час реєстрації:', err);
     res.status(500).json({ message: 'Помилка сервера' });
