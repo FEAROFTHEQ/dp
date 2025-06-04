@@ -38,24 +38,25 @@
     <p id="output"></p>
   </div>
   <div id="profileCard" style="
-        display: none;
-        border: 1px solid #ccc;
-        padding: 10px;
-        margin-top: 20px;
-        max-width: 250px;">
+        display: none;">
     <img src="profile.png" alt="Avatar" style="display: block; margin-bottom: 10px; width: 50px" />
     <div><strong>Користувач:</strong> <span id="profileUsername"></span></div>
     <div><strong>Роль:</strong> <span id="profileRole"></span></div>
     <button id="logoutBtn">Вийти з системи</button>
   </div>
-  <button id="adminPanelLink" style="display: none">
+  <!-- <button id="adminPanelLink" style="display: none">
     Адмін-повідомлення
-  </button>
-  <div id="adminContainer"></div>
-  <h2 style="margin-top: 20px; display: none" id="listHeader">
+  </button> -->
+  <!-- <div id="adminContainer"></div> -->
+   <div class="container">
+<div class="usersList-container"> 
+  <h1 style=" display: none" id="listHeader">
     Список користувачів
-  </h2>
-  <ul id="userList"></ul>
+  </h1>
+  <ul id="userList" class="userList"></ul>
+   </div>
+   </div>
+   
   </div>
   <script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
   <script src="https://unpkg.com/node-forge@1.0.0/dist/forge.min.js"></script>
@@ -65,7 +66,7 @@
     const API_BASE = isLocalhost
       ? "http://localhost:5000"
       : "https://dp-jha0.onrender.com";
-    const adminPanelLink = document.getElementById("adminPanelLink");
+    // const adminPanelLink = document.getElementById("adminPanelLink");
     const sucReg = document.getElementById("sucReg");
     const sucLog = document.getElementById("sucLog");
     const output = document.getElementById("output");
@@ -81,7 +82,7 @@
     const registerForm = document.getElementById("registerForm");
     const loginForm = document.getElementById("loginForm");
     const listHeader = document.getElementById("listHeader");
-    adminPanelLink.style.display = "none";
+    // adminPanelLink.style.display = "none";
     let token = sessionStorage.getItem("token") || "";
     function showProfile(username, role) {
       profileUsername.textContent = username;
@@ -477,11 +478,11 @@ function openDB() {
           showProfile(data.username, result.role);
           const savedRole = sessionStorage.getItem("role");
           fetchUsersList();
-          if (savedRole === "admin") {
-            adminPanelLink.style.display = "block";
-          } else {
-            adminPanelLink.style.display = "none";
-          }
+          // if (savedRole === "admin") {
+          //   adminPanelLink.style.display = "block";
+          // } else {
+          //   adminPanelLink.style.display = "none";
+          // }
         } else {
           if (result.remainingAttempts !== undefined) {
             output.textContent = `${result.message}. Залишилось спроб: ${result.remainingAttempts}`;
@@ -493,39 +494,39 @@ function openDB() {
         console.error(err);
       }
     });
-    adminPanelLink.addEventListener("click", async (e) => {
-      e.preventDefault();
-      const savedToken = sessionStorage.getItem("token");
-      if (!savedToken) {
-        output.textContent = "Спочатку увійдіть у систему";
-        return;
-      }
-      fetch(`${API_BASE}/admin`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error("Не авторизовано");
-          return res.text();
-        })
-        .then((html) => {
-          document.getElementById("adminContainer").innerHTML = html;
-        })
-        .catch((err) => {
-          console.error("Доступ заборонено:", err.message);
-          alert("У вас немає доступу до повідомлення адміністратора");
-        });
-    });
+    // adminPanelLink.addEventListener("click", async (e) => {
+    //   e.preventDefault();
+    //   const savedToken = sessionStorage.getItem("token");
+    //   if (!savedToken) {
+    //     output.textContent = "Спочатку увійдіть у систему";
+    //     return;
+    //   }
+    //   fetch(`${API_BASE}/admin`, {
+    //     method: "GET",
+    //     headers: {
+    //       Authorization: `Bearer ${token}`,
+    //     },
+    //   })
+    //     .then((res) => {
+    //       if (!res.ok) throw new Error("Не авторизовано");
+    //       return res.text();
+    //     })
+    //     .then((html) => {
+    //       document.getElementById("adminContainer").innerHTML = html;
+    //     })
+    //     .catch((err) => {
+    //       console.error("Доступ заборонено:", err.message);
+    //       alert("У вас немає доступу до повідомлення адміністратора");
+    //     });
+    // });
     logoutBtn.addEventListener("click", () => {
       sucReg.style.display = "none";
       sucLog.style.display = "none";
       sessionStorage.removeItem("token");
-      document.getElementById("adminContainer").innerHTML = "";
+      // document.getElementById("adminContainer").innerHTML = "";
       document.getElementById("userList").innerHTML = "";
       listHeader.style.display = "none";
-      adminPanelLink.style.display = "none";
+      // adminPanelLink.style.display = "none";
       hideProfile();
     });
   </script>
