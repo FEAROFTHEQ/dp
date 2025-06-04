@@ -9,28 +9,34 @@
   <link rel="icon" href="/favicon.png" type="image/png" />
   <title>Create profile</title>
 </head>
-
 <body>
-  <div>
+  <div class="wrapper">
+  <div class="container">
     <h1>Реєстрація</h1>
     <form id="registerForm">
       <input type="text" name="username" placeholder="Ім’я користувача" required />
       <input id="passwInput" type="password" name="password" placeholder="Пароль" required />
+      <label class="inputCheck">
       <input type="checkbox" id="passwordToggle" name="passwordToggle" />Показати пароль
+      </label>  
       <div id="passwStr"></div>
       <button type="submit">Зареєструватися</button>
     </form>
+    <p id="sucReg" style="display: none">Реєстрація успішна!</p>
   </div>
-  <div>
+  <div class="container">
     <h1>Вхід</h1>
     <form id="loginForm">
       <input type="text" name="username" placeholder="Ім’я користувача" required />
       <input type="password" id="loginInput" name="password" placeholder="Пароль" required />
+      <label class="inputCheck">
       <input type="checkbox" id="passwordToggle2" name="passwordToggle" />Показати пароль
+      </label>
       <button type="submit">Увійти</button>
     </form>
+    <p id="sucLog" style="display: none">Успішний вхід!</p>
+    <p id="output"></p>
   </div>
-  <p id="output"></p>
   <div id="profileCard" style="
         display: none;
         border: 1px solid #ccc;
@@ -50,6 +56,7 @@
     Список користувачів
   </h2>
   <ul id="userList"></ul>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/zxcvbn@4.4.2/dist/zxcvbn.js"></script>
   <script src="https://unpkg.com/node-forge@1.0.0/dist/forge.min.js"></script>
   <script>
@@ -59,6 +66,9 @@
       ? "http://localhost:5000"
       : "https://dp-jha0.onrender.com";
     const adminPanelLink = document.getElementById("adminPanelLink");
+    const sucReg = document.getElementById("sucReg");
+    const sucLog = document.getElementById("sucLog");
+    const output = document.getElementById("output");
     const passwInput = document.getElementById("passwInput");
     const passwordToggle = document.getElementById("passwordToggle");
     const passwordToggle2 = document.getElementById("passwordToggle2");
@@ -70,7 +80,6 @@
     const logoutBtn = document.getElementById("logoutBtn");
     const registerForm = document.getElementById("registerForm");
     const loginForm = document.getElementById("loginForm");
-    const output = document.getElementById("output");
     const listHeader = document.getElementById("listHeader");
     adminPanelLink.style.display = "none";
     let token = sessionStorage.getItem("token") || "";
@@ -88,6 +97,26 @@
         role: payload.role,
       };
     }
+    const DB_NAME = "CryptoKeysDB";
+const DB_VERSION = 2;
+const STORE_NAME = "keys";
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = function (event) {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    request.onsuccess = function (event) {
+      resolve(event.target.result);
+    };
+    request.onerror = function (event) {
+      reject(event.target.error);
+    };
+  });
+}
     function generateRSAKeyPair() {
       const keypair = forge.pki.rsa.generateKeyPair(2048);
       return {
@@ -102,8 +131,9 @@
       token = "";
       sessionStorage.removeItem("token");
       sessionStorage.removeItem("role");
-      output.textContent = "Ви вийшли з системи";
+      alert("Ви вийшли з системи");
     }
+  
     passwInput.addEventListener("input", () => {
       const password = passwInput.value;
       const result = zxcvbn(password);
@@ -143,70 +173,52 @@
         salt: salt,
       };
     }
-    function savePrivateKeyToIndexedDB(encryptedData, iv, salt) {
-      const request = indexedDB.open("CryptoKeysDB", 1);
-      request.onupgradeneeded = function (event) {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains("keys")) {
-          db.createObjectStore("keys");
-        }
-      };
-      request.onsuccess = function (event) {
-        const db = event.target.result;
-        const transaction = db.transaction(["keys"], "readwrite");
-        const store = transaction.objectStore("keys");
-        const encryptedPackage = {
-          encryptedData: Array.from(encryptedData),
-          iv: Array.from(iv),
-          salt: Array.from(salt),
-        };
-        store.put(encryptedPackage, "privateKey");
-        console.log("Зашифрований приватний ключ збережено в IndexedDB");
-      };
-      request.onerror = function (event) {
-        console.error("IndexedDB помилка:", event.target.errorCode);
-      };
+    async function savePrivateKeyToIndexedDB(encryptedData, iv, salt) {
+      // const request = indexedDB.open("CryptoKeysDB", 1);
+      // request.onupgradeneeded = function (event) {
+      //   const db = event.target.result;
+      //   if (!db.objectStoreNames.contains("keys")) {
+      //     db.createObjectStore("keys");
+      //   }
+      // };
+      // request.onsuccess = function (event) {
+      //   const db = event.target.result;
+      //   const transaction = db.transaction(["keys"], "readwrite");
+      //   const store = transaction.objectStore("keys");
+      //   const encryptedPackage = {
+      //     encryptedData: Array.from(encryptedData),
+      //     iv: Array.from(iv),
+      //     salt: Array.from(salt),
+      //   };
+      //   store.put(encryptedPackage, "privateKey");
+      //   console.log("Зашифрований приватний ключ збережено в IndexedDB");
+      // };
+      // request.onerror = function (event) {
+      //   console.error("IndexedDB помилка:", event.target.errorCode);
+      // };
+       const db = await openDB();
+  const tx = db.transaction("keys", "readwrite");
+  const store = tx.objectStore("keys");
+
+  const encryptedPackage = {
+    encryptedData: Array.from(encryptedData),
+    iv: Array.from(iv),
+    salt: Array.from(salt),
+  };
+
+  await new Promise((resolve, reject) => {
+    const request = store.put(encryptedPackage, "privateKey");
+    request.onsuccess = () => {
+      console.log("Зашифрований приватний ключ збережено в IndexedDB");
+      resolve();
+    };
+    request.onerror = (event) => {
+      console.error("Помилка збереження ключа в IndexedDB:", event.target.error);
+      reject(event.target.error);
+    };
+  });
     }
-    async function decryptPrivateKey(encryptedData, iv, salt, password) {
-      const key = await deriveKeyFromPassword(password, salt);
-      const decrypted = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: iv },
-        key,
-        encryptedData
-      );
-      const decoder = new TextDecoder();
-      return decoder.decode(decrypted);
-    }
-    function loadEncryptedPrivateKeyFromIndexedDB() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open("CryptoKeysDB", 1);
-        request.onsuccess = function (event) {
-          const db = event.target.result;
-          const transaction = db.transaction(["keys"], "readonly");
-          const store = transaction.objectStore("keys");
-          const getRequest = store.get("privateKey");
-          getRequest.onsuccess = function () {
-            const result = getRequest.result;
-            if (result) {
-              resolve({
-                encryptedData: result.encryptedData,
-                iv: result.iv,
-                salt: result.salt,
-              });
-            } else {
-              resolve({}); // Немає ключа
-            }
-          };
-          getRequest.onerror = function (event) {
-            reject(event.target.error);
-          };
-        };
-        request.onerror = function (event) {
-          reject(event.target.error);
-        };
-      });
-    }
-    async function deriveKeyFromPassword(password, salt) {
+     async function deriveKeyFromPassword(password, salt) {
       const encoder = new TextEncoder();
       const keyMaterial = await crypto.subtle.importKey(
         "raw",
@@ -228,6 +240,78 @@
         ["encrypt", "decrypt"]
       );
     }
+    async function decryptPrivateKey(encryptedData, iv, salt, password) {
+      // console.log("Decrypting with:", encryptedData, iv, salt, password );
+        const encData = new Uint8Array(encryptedData);
+  const vector = new Uint8Array(iv);
+  const saltBytes = new Uint8Array(salt);
+  // console.log("Decrypting with UINT8ARRAY:", encData, vector, saltBytes, password );
+      const key = await deriveKeyFromPassword(password, saltBytes);
+      try {
+      const decrypted = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: vector },
+        key,
+        encData
+      );
+      const decoder = new TextDecoder();
+      return decoder.decode(decrypted);}
+      catch(err){
+        // console.log("CRYPT: ",err);
+      }
+    }
+    async function loadEncryptedPrivateKeyFromIndexedDB() {
+      // return new Promise((resolve, reject) => {
+      //   const request = indexedDB.open("CryptoKeysDB", 1);
+      //   request.onsuccess = function (event) {
+      //     const db = event.target.result;
+      //     const transaction = db.transaction(["keys"], "readonly");
+      //     const store = transaction.objectStore("keys");
+      //     const getRequest = store.get("privateKey");
+      //     getRequest.onsuccess = function () {
+      //       const result = getRequest.result;
+      //       if (result) {
+      //         resolve({
+      //       encryptedData: new Uint8Array(result.encryptedData),
+      //       iv: new Uint8Array(result.iv),
+      //       salt: new Uint8Array(result.salt),
+      //     });
+      //       } else {
+      //         resolve({});
+      //       }
+      //     };
+      //     getRequest.onerror = function (event) {
+      //       reject(event.target.error);
+      //     };
+      //   };
+      //   request.onerror = function (event) {
+      //     reject(event.target.error);
+      //   };
+      // });
+       const db = await openDB();
+  const tx = db.transaction("keys", "readonly");
+  const store = tx.objectStore("keys");
+
+  return new Promise((resolve, reject) => {
+    const getRequest = store.get("privateKey");
+    getRequest.onsuccess = function () {
+      const result = getRequest.result;
+      if (result) {
+        // console.trace("Завантажено з IndexedDB FUNC LOAD:", result);
+        resolve({
+          encryptedData: new Uint8Array(result.encryptedData),
+          iv: new Uint8Array(result.iv),
+          salt: new Uint8Array(result.salt),
+        });
+      } else {
+        resolve({});
+      }
+    };
+    getRequest.onerror = function (event) {
+      reject(event.target.error);
+    };
+  });
+    }
+   
     async function fetchUsersList() {
       const savedToken = sessionStorage.getItem("token");
       if (!savedToken) {
@@ -291,6 +375,23 @@
         console.log("Помилка з’єднання з сервером", e);
       }
     }
+ async function tryDecryptPrivateKey(password) {
+  try {
+    const { encryptedData, iv, salt } = await loadEncryptedPrivateKeyFromIndexedDB();
+
+    if (!encryptedData || !iv || !salt) {
+      throw new Error("Зашифрований ключ не знайдено.");
+    }
+
+    const decryptedKey = await decryptPrivateKey(encryptedData, iv, salt, password);
+// console.log(decryptedKey);
+//     console.log("✅ Ключ успішно розшифровано");
+    return decryptedKey;
+  } catch (err) {
+    console.warn("❌ Не вдалося розшифрувати приватний ключ. Можливо, пароль неправильний.", err);
+    // return null;
+  }
+}
     passwordToggle.addEventListener("change", function () {
       passwInput.type = this.checked ? "text" : "password";
     });
@@ -303,6 +404,7 @@
       const { publicKey, privateKey } = generateRSAKeyPair();
       const data = Object.fromEntries(new FormData(registerForm));
       const payload = { ...data, publicKey };
+      const password = data.password;
       try {
         const res = await fetch(`${API_BASE}/register`, {
           method: "POST",
@@ -310,21 +412,25 @@
           body: JSON.stringify(payload),
         });
         const result = await res.json();
-        output.textContent = JSON.stringify(result, null, 2);
+        // alert(JSON.stringify(result.message, null, 2));
+        // output.textContent = JSON.stringify(result, null, 2);
         if (res.ok && result.message) {
           registerForm.reset();
           passwStr.innerHTML = "";
           passwInput.classList.remove("strong");
-        }
-        const password = data.password;
-        const encryptedObj = await encryptPrivateKey(privateKey, password);
+          sucReg.style.display = "block";
+          alert("Реєстрація успішна!");
+          const encryptedObj = await encryptPrivateKey(privateKey, password);
         savePrivateKeyToIndexedDB(
           encryptedObj.encryptedData,
           encryptedObj.iv,
           encryptedObj.salt
         );
+        }
       } catch (err) {
-        output.textContent = "Помилка підключення до сервера";
+        console.error(err);
+        // output.textContent = "Помилка підключення до сервера";
+        alert('Помилка підключення до сервера');
       }
     });
     loginForm.addEventListener("submit", async (e) => {
@@ -348,28 +454,26 @@
             username: payload.username,
             role: payload.role,
           };
-          const { encryptedData, iv, salt } =
-            await loadEncryptedPrivateKeyFromIndexedDB();
+          const { encryptedData, iv, salt } = await loadEncryptedPrivateKeyFromIndexedDB();
           if (!encryptedData || !iv || !salt) {
             console.warn("Приватний ключ не знайдено в IndexedDB.");
+            // console.log(encryptedData, iv, salt);
           } else {
             try {
-              const privateKey = await decryptPrivateKey(
-                new Uint8Array(encryptedData),
-                new Uint8Array(iv),
-                new Uint8Array(salt),
+              const privateKey = await tryDecryptPrivateKey(
                 data.password
               );
+              // console.log(privateKey);
+              // await clearPrivateKeyFromIndexedDB();
             } catch (e) {
               console.error(
                 "❌ Не вдалося розшифрувати приватний ключ. Можливо, неправильний пароль."
               );
-              output.textContent =
-                "Не вдалося розшифрувати приватний ключ. Можливо, пароль неправильний.";
               return;
             }
           }
-          output.textContent = JSON.stringify(result, null, 2);
+           sucLog.style.display = "block";
+          alert("Успішний вхід!");
           showProfile(data.username, result.role);
           const savedRole = sessionStorage.getItem("role");
           fetchUsersList();
@@ -386,7 +490,6 @@
           }
         }
       } catch (err) {
-        output.textContent = "Помилка підключення до сервера: " + err.message;
         console.error(err);
       }
     });
@@ -416,6 +519,8 @@
         });
     });
     logoutBtn.addEventListener("click", () => {
+      sucReg.style.display = "none";
+      sucLog.style.display = "none";
       sessionStorage.removeItem("token");
       document.getElementById("adminContainer").innerHTML = "";
       document.getElementById("userList").innerHTML = "";
