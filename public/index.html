@@ -359,6 +359,7 @@ function openDB() {
                 });
                 if (response.ok) {
                   console.log("Користувача", user.username, "видалено");
+                  alert("Користувача", user.username, "видалено");
                   deleteButton.closest("li")?.remove(); // або видали з DOM інший елемент
                 } else {
                   const error = await response.text();
