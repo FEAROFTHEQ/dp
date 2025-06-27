@@ -359,7 +359,7 @@ function openDB() {
                 });
                 if (response.ok) {
                   console.log("Користувача", user.username, "видалено");
-                  alert("Користувача", user.username, "видалено");
+                  alert("Користувача " + user.username +  " видалено");
                   deleteButton.closest("li")?.remove(); // або видали з DOM інший елемент
                 } else {
                   const error = await response.text();
@@ -416,6 +416,10 @@ function openDB() {
         const result = await res.json();
         // alert(JSON.stringify(result.message, null, 2));
         // output.textContent = JSON.stringify(result, null, 2);
+          if (res.status === 409) {
+      alert(result.message || "Користувач з таким ім'ям вже існує");
+      return; // зупиняємо обробку
+    }
         if (res.ok && result.message) {
           registerForm.reset();
           passwStr.innerHTML = "";
